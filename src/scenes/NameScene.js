@@ -77,7 +77,7 @@ export default class NameScene extends Phaser.Scene {
                 });
 
                 // We'll build this next.
-                this.scene.start("BootSequence");
+                this.scene.start("World");
 
             }
 
