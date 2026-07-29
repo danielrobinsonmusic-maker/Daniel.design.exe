@@ -72,12 +72,11 @@ export default class NameScene extends Phaser.Scene {
 
             if (this.playerName.trim().length > 0) {
 
-                SaveManager.save({
-                    name: this.playerName
-                });
+               SaveManager.save({
+    name: this.playerName
+});
 
-                // We'll build this next.
-                this.scene.start("World");
+this.scene.start("World");
 
             }
 

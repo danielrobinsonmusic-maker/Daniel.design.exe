@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import Player from "../entities/Player";
-
+import { TILE, createTownSquare } from "../world/MapData";
 export default class WorldScene extends Phaser.Scene {
     constructor() {
         super("World");
@@ -8,51 +8,124 @@ export default class WorldScene extends Phaser.Scene {
 
     create() {
 
-        // Temporary world size
-        this.physics.world.setBounds(0, 0, 2400, 1600);
+        const map = createTownSquare();
 
-        // Grass-colored background
-        this.cameras.main.setBackgroundColor("#6FAF62");
+const TILE_SIZE = 32;
 
-        // Draw a subtle grid so movement feels meaningful
-        const graphics = this.add.graphics();
+this.physics.world.setBounds(
+    0,
+    0,
+    map[0].length * TILE_SIZE,
+    map.length * TILE_SIZE
+);
 
-        graphics.lineStyle(1, 0x6aa45f, 0.25);
+        this.obstacles = this.physics.add.staticGroup();
 
-        for (let x = 0; x <= 2400; x += 32) {
-            graphics.moveTo(x, 0);
-            graphics.lineTo(x, 1600);
-        }
-
-        for (let y = 0; y <= 1600; y += 32) {
-            graphics.moveTo(0, y);
-            graphics.lineTo(2400, y);
-        }
-
-        graphics.strokePath();
+        this.drawGround();
 
         this.player = new Player(this, 1200, 800);
 
-        this.cameras.main.setBounds(0, 0, 2400, 1600);
+        this.physics.add.collider(
+            this.player,
+            this.obstacles
+        );
 
+        this.cameras.main.setBounds(
+    0,
+    0,
+    map[0].length * TILE_SIZE,
+    map.length * TILE_SIZE
+);
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-
         this.cameras.main.setZoom(2);
 
-        this.add.text(
-            1120,
-            720,
-            "World Green\n(Blockout)",
-            {
-                fontFamily: "monospace",
-                fontSize: "14px",
-                color: "#ffffff",
-                align: "center"
+    }
+
+    drawGround() {
+
+        const TILE_SIZE = 32;
+
+        const map = createTownSquare();
+
+        const HEIGHT = map.length;
+        const WIDTH = map[0].length;
+
+        const graphics = this.add.graphics();
+
+        for (let y = 0; y < HEIGHT; y++) {
+
+            for (let x = 0; x < WIDTH; x++) {
+
+                switch (map[y][x]) {
+
+                    case TILE.GRASS:
+                        graphics.fillStyle(0x88A95F);
+                        break;
+
+                    case TILE.STONE:
+                        graphics.fillStyle(0x9B9B9B);
+                        break;
+
+                    case TILE.WATER:
+                        graphics.fillStyle(0x4A90E2);
+                        break;
+
+                    case TILE.TREE:
+                        graphics.fillStyle(0x2F6B2F);
+                        break;
+
+                    case TILE.LIBRARY:
+                        graphics.fillStyle(0xB68C5A);
+                        break;
+
+                    default:
+                        graphics.fillStyle(0xff00ff);
+                        break;
+                }
+
+                graphics.fillRect(
+                    x * TILE_SIZE,
+                    y * TILE_SIZE,
+                    TILE_SIZE,
+                    TILE_SIZE
+                );
+
+                if (
+                    map[y][x] === TILE.TREE ||
+                    map[y][x] === TILE.LIBRARY
+                ) {
+                    this.createObstacle(
+                        x * TILE_SIZE,
+                        y * TILE_SIZE
+                    );
+                }
+
             }
+
+        }
+
+    }
+
+    createObstacle(x, y) {
+
+        const block = this.add.rectangle(
+            x + 16,
+            y + 16,
+            32,
+            32,
+            0xff0000,
+            0
         );
+
+        this.physics.add.existing(block, true);
+
+        this.obstacles.add(block);
+
     }
 
     update() {
+
         this.player.update();
+
     }
 }

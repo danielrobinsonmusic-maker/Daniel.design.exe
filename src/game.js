@@ -16,17 +16,25 @@ const config = {
 
     pixelArt: true,
 
+    physics: {
+        default: "arcade",
+        arcade: {
+            debug: false,
+            gravity: { y: 0 },
+        },
+    },
+
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
     },
 
     scene: [
-    BootScene,
-    TitleScene,
-    NameScene,
-    WorldScene,
-],
+        BootScene,
+        TitleScene,
+        NameScene,
+        WorldScene,
+    ],
 };
 
 export default new Phaser.Game(config);
