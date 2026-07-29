@@ -8,14 +8,21 @@ export default class BootScene extends Phaser.Scene {
 
     preload() {
 
+        // -------------------------------------------------
+        // Kenney Urban Pack
+        // -------------------------------------------------
+
         this.load.image(
             "tiles",
-            "assets/kenney_rpg-urban-pack/Tilemap/tilemap_packed.png"
+            "tiles/tilemap.png"
         );
 
     }
 
     create() {
+
+        // Verify the tilesheet loaded successfully.
+        console.log("Tiles loaded:", this.textures.exists("tiles"));
 
         this.scene.start("Title");
 
