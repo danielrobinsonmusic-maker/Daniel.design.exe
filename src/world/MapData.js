@@ -4,10 +4,10 @@ export const TILE = {
     WATER: 2,
     TREE: 3,
     LIBRARY: 4,
-    DESIGN_STUDIO: 5,
-    WEST_BUILDING: 6,
+    WORKSHOP: 5,
+    GALLERY: 6,
     NORTHWEST_BUILDING: 7,
-    NORTHEAST_BUILDING: 8
+    CAFE: 8
 };
 function fillRect(map, x, y, width, height, tile) {
 
@@ -93,16 +93,16 @@ export function createTownSquare() {
 // Main road to Library
 drawRoad(map, 37, 6, 37, 8);
 
-// West Building
+// Gallery
 drawRoad(map, 24, 13, 29, 13);
 
-// Design Studio
+// Workshop
 drawRoad(map, 45, 13, 50, 13);
 
 // Northwest Building
 drawRoad(map, 20, 6, 20, 13);
 
-// Northeast Building
+// Café
 drawRoad(map, 54, 6, 54, 13);
     // -------------------------------------------------
     // Fountain
@@ -136,17 +136,17 @@ drawRoad(map, 54, 6, 54, 13);
 map[6][37] = TILE.STONE;
 
     // -------------------------------------------------
-    // West Building
+    // Gallery
     // -------------------------------------------------
 
-   fillRect(map, 16, 10, 9, 7, TILE.WEST_BUILDING);
+   fillRect(map, 16, 10, 9, 7, TILE.GALLERY);
 map[16][20] = TILE.STONE;
 
     // -------------------------------------------------
-    // Design Studio
+    // Workshop
     // -------------------------------------------------
 
-   fillRect(map, 50, 10, 9, 7, TILE.DESIGN_STUDIO);
+   fillRect(map, 50, 10, 9, 7, TILE.WORKSHOP);
 map[16][54] = TILE.STONE;
 
     // -------------------------------------------------
@@ -156,10 +156,10 @@ fillRect(map, 16, 2, 9, 5, TILE.NORTHWEST_BUILDING);
 map[6][20] = TILE.STONE;
 
     // -------------------------------------------------
-    // Northeast Building
+    // Café
     // -------------------------------------------------
 
-   fillRect(map, 50, 2, 9, 5, TILE.NORTHEAST_BUILDING);
+   fillRect(map, 50, 2, 9, 5, TILE.CAFE);
 map[6][54] = TILE.STONE;
     return map;
 

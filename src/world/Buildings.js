@@ -13,7 +13,7 @@ export const BUILDINGS = [
 
     {
         id: "west",
-        name: "West Building",
+        name: "Gallery",
         x: 16,
         y: 10,
         width: 9,
@@ -24,7 +24,7 @@ export const BUILDINGS = [
 
     {
         id: "studio",
-        name: "Design Studio",
+        name: "Workshop",
         x: 50,
         y: 10,
         width: 9,
@@ -46,7 +46,7 @@ export const BUILDINGS = [
 
     {
         id: "northeast",
-        name: "Northeast Building",
+        name: "Café",
         x: 50,
         y: 2,
         width: 9,
