@@ -9,6 +9,9 @@ import AppScene from "./scenes/AppScene";
 import LibraryScene from "./scenes/LibraryScene";
 import ResumeScene from "./scenes/DocumentViewerScene";
 import LibraryShelfScene from "./scenes/LibraryShelfScene";
+import GalleryScene from "./scenes/GalleryScene";
+import WorkshopScene from "./scenes/WorkshopScene";
+import CafeScene from "./scenes/CafeScene";
 const config = {
     type: Phaser.AUTO,
 
@@ -43,7 +46,10 @@ const config = {
         AppScene,
         LibraryScene,
         ResumeScene,
-        LibraryShelfScene
+        LibraryShelfScene,
+        GalleryScene,
+        WorkshopScene,
+        CafeScene
     ]
 };
 

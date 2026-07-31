@@ -6,14 +6,21 @@ export default class Panel {
 
         this.container = scene.add.container(x, y);
 
+        // panel.png ships with dead padding around the actual frame art;
+        // BootScene crops a "content" frame so this fills width/height
+        // exactly instead of squishing mostly-empty canvas into place.
+        const panelFrame = scene.textures.get("ui-panel").has("content")
+            ? "content"
+            : undefined;
+
         // Shadow
-        const shadow = scene.add.image(4, 4, "ui-panel");
+        const shadow = scene.add.image(4, 4, "ui-panel", panelFrame);
         shadow.setDisplaySize(width, height);
         shadow.setTint(0x222222);
         shadow.setAlpha(0.35);
 
         // Main panel
-        const background = scene.add.image(0, 0, "ui-panel");
+        const background = scene.add.image(0, 0, "ui-panel", panelFrame);
         background.setDisplaySize(width, height);
 
         // Title bar (falls back to a flat bar if the art asset isn't in place yet)

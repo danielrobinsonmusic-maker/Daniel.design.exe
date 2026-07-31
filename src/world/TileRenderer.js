@@ -35,30 +35,6 @@ export default class TileRenderer {
                         this.graphics.fillStyle(0x4A90E2);
                         break;
 
-                    case TILE.TREE:
-                        this.graphics.fillStyle(0x2F6B2F);
-                        break;
-
-                    case TILE.LIBRARY:
-                        this.graphics.fillStyle(0xB68C5A);
-                        break;
-
-                    case TILE.WORKSHOP:
-                        this.graphics.fillStyle(0xB6A05A);
-                        break;
-
-                    case TILE.GALLERY:
-                        this.graphics.fillStyle(0xB66E5A);
-                        break;
-
-                    case TILE.NORTHWEST_BUILDING:
-                        this.graphics.fillStyle(0x8C6AB6);
-                        break;
-
-                    case TILE.CAFE:
-                        this.graphics.fillStyle(0xB6A05A);
-                        break;
-
                     default:
                         this.graphics.fillStyle(0xff00ff);
                         break;

@@ -1,6 +1,19 @@
 import Phaser from "phaser";
 import Panel from "../ui/Panel";
 import library from "../data/library";
+import ContentType from "../data/contentTypes";
+
+// A book's cover color hints at what kind of content it holds.
+const BOOK_COLORS = {
+    [ContentType.PDF]: 0x8b3a3a,
+    [ContentType.TEXT]: 0x3a5f8b,
+    [ContentType.GALLERY]: 0x3a8b55,
+    [ContentType.IMAGE]: 0x3a8b55,
+    [ContentType.VIDEO]: 0x8b3a6a,
+    [ContentType.LINK]: 0x6a3a8b,
+    [ContentType.CONTACT]: 0x8b6a3a
+};
+const DEFAULT_BOOK_COLOR = 0x555555;
 
 export default class LibraryShelfScene extends Phaser.Scene {
 
@@ -26,7 +39,8 @@ export default class LibraryShelfScene extends Phaser.Scene {
 
         // Panel sized to fit however many items the library holds, so the
         // list never overruns the frame or collides with the help text.
-        const rowHeight = 34;
+        const panelWidth = 500;
+        const rowHeight = 40;
         const panelHeight = 150 + library.length * rowHeight + 60;
         const firstItemY = -(panelHeight / 2) + 90;
 
@@ -34,29 +48,56 @@ export default class LibraryShelfScene extends Phaser.Scene {
             this,
             width / 2,
             height / 2,
-            500,
+            panelWidth,
             panelHeight
         );
 
         this.panel.setTitle("Library Shelf");
 
-        this.bookTexts = [];
+        const bookX = -(panelWidth / 2) + 64;
+        const titleX = bookX + 30;
+        const arrowX = bookX - 22;
 
-        library.forEach((item, index) => {
+        this.rows = library.map((item, index) => {
 
-            const text = this.add.text(
+            const rowY = firstItemY + (index * rowHeight);
+
+            const highlight = this.add.rectangle(
                 0,
-                firstItemY + (index * rowHeight),
-                "",
+                rowY,
+                panelWidth - 60,
+                rowHeight - 6,
+                0xffffff,
+                0
+            );
+
+            const book = this.createBook(bookX, rowY, item.type);
+
+            const arrow = this.add.text(
+                arrowX,
+                rowY,
+                "►",
                 {
                     fontFamily: "monospace",
                     fontSize: "18px",
                     color: "#333"
                 }
-            ).setOrigin(0.5);
+            ).setOrigin(0.5).setAlpha(0);
 
-            this.panel.body.add(text);
-            this.bookTexts.push(text);
+            const title = this.add.text(
+                titleX,
+                rowY,
+                item.title,
+                {
+                    fontFamily: "monospace",
+                    fontSize: "18px",
+                    color: "#333"
+                }
+            ).setOrigin(0, 0.5);
+
+            this.panel.body.add([highlight, book, arrow, title]);
+
+            return { highlight, book, arrow, title, baseX: bookX };
 
         });
 
@@ -87,13 +128,41 @@ export default class LibraryShelfScene extends Phaser.Scene {
 
     }
 
+    // Small pixel-art book: a cover, a darker spine edge, and a sliver of
+    // pages, tinted by content type so the shelf reads as a real bookshelf.
+    createBook(x, y, type) {
+
+        const width = 26;
+        const height = 32;
+        const color = BOOK_COLORS[type] ?? DEFAULT_BOOK_COLOR;
+        const spineColor = Phaser.Display.Color.ValueToColor(color).darken(30).color;
+
+        const container = this.add.container(x, y);
+
+        const cover = this.add.rectangle(0, 0, width, height, color)
+            .setStrokeStyle(1, spineColor);
+
+        const spine = this.add.rectangle(-(width / 2) + 3, 0, 4, height - 4, spineColor);
+
+        const pages = this.add.rectangle((width / 2) - 3, 0, 3, height - 6, 0xf5ecd8);
+
+        container.add([cover, spine, pages]);
+
+        return container;
+
+    }
+
     refreshMenu() {
 
-        this.bookTexts.forEach((text, index) => {
+        this.rows.forEach((row, index) => {
 
-            const prefix = index === this.selection ? "► " : "  ";
+            const isSelected = index === this.selection;
 
-            text.setText(prefix + library[index].title);
+            row.highlight.setFillStyle(0xffffff, isSelected ? 0.15 : 0);
+            row.arrow.setAlpha(isSelected ? 1 : 0);
+            row.title.setColor(isSelected ? "#000000" : "#333333");
+            row.book.setScale(isSelected ? 1.1 : 1);
+            row.book.x = row.baseX + (isSelected ? 4 : 0);
 
         });
 

@@ -2,6 +2,14 @@ import Phaser from "phaser";
 
 const SPEED = 180;
 
+// Visual canvas: 1 tile wide x 2 tiles tall (matches TILE_SIZE=32, i.e.
+// 16x32 at native 16px-per-tile resolution, displayed at 2x). Collision
+// footprint stays feet-sized and independent of the taller visual — see
+// the body setSize/setOffset below.
+const WIDTH = 32;
+const HEIGHT = 64;
+const BODY_SIZE = 16;
+
 export default class Player extends Phaser.Physics.Arcade.Sprite {
     constructor(scene, x, y) {
         // Create a tiny texture the first time we need it
@@ -9,9 +17,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
             const g = scene.add.graphics();
 
             g.fillStyle(0x355c7d);
-            g.fillRect(0, 0, 16, 16);
+            g.fillRect(0, 0, WIDTH, HEIGHT);
 
-            g.generateTexture("player", 16, 16);
+            g.generateTexture("player", WIDTH, HEIGHT);
             g.destroy();
         }
 
@@ -20,9 +28,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
+        // Bottom-center anchor: the sprite extends upward from the
+        // character's feet, matching the ground-contact convention used
+        // by trees and buildings (see WorldObjects.js).
+        this.setOrigin(0.5, 1);
+
         this.setCollideWorldBounds(true);
 
-        this.body.setSize(16, 16);
+        // Footprint/collision box stays feet-sized, positioned at the
+        // bottom of the taller visual canvas rather than its center.
+        this.body.setSize(BODY_SIZE, BODY_SIZE);
+        this.body.setOffset((WIDTH - BODY_SIZE) / 2, HEIGHT - BODY_SIZE);
 
         this.cursors = scene.input.keyboard.createCursorKeys();
 

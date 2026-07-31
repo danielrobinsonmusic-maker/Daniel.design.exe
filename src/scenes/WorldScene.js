@@ -1,7 +1,19 @@
 import Phaser from "phaser";
 import Player from "../entities/Player";
 import TileRenderer from "../world/TileRenderer";
-import { TILE, createTownSquare } from "../world/MapData";
+import WorldObjects from "../world/WorldObjects";
+import { TREES, createTownSquare } from "../world/MapData";
+import { BUILDINGS } from "../world/Buildings";
+
+// Maps an interaction zone's display name to the scene it leads into.
+// Names with no entry here (e.g. "Theatre") fall through to
+// the console.log placeholder — they don't have an interior yet.
+const BUILDING_SCENES = {
+    "Library": "Library",
+    "Gallery": "Gallery",
+    "Workshop": "Workshop",
+    "Café": "Cafe"
+};
 
 export default class WorldScene extends Phaser.Scene {
     constructor() {
@@ -29,25 +41,37 @@ export default class WorldScene extends Phaser.Scene {
         this.tileRenderer = new TileRenderer(this);
         this.tileRenderer.render(this.mapData);
 
-        // create obstacles from map data (renderer does NOT create collisions)
-        for (let y = 0; y < this.mapData.length; y++) {
-            for (let x = 0; x < this.mapData[0].length; x++) {
-                const t = this.mapData[y][x];
-                if (
-                    t === TILE.TREE ||
-                    t === TILE.LIBRARY ||
-                    t === TILE.WORKSHOP ||
-                    t === TILE.GALLERY ||
-                    t === TILE.NORTHWEST_BUILDING ||
-                    t === TILE.CAFE
-                ) {
-                    this.createObstacle(x * TILE_SIZE, y * TILE_SIZE);
+        // trees and buildings are no longer part of the tile grid — spawn
+        // them as their own GameObjects so they can be depth-sorted later
+        this.worldObjects = new WorldObjects(this).create();
+
+        // trees: one solid tile per tree (same footprint as before)
+        TREES.forEach(([x, y]) => {
+            this.createObstacle(x * TILE_SIZE, y * TILE_SIZE);
+        });
+
+        // buildings: solid across the whole footprint except the door tile
+        BUILDINGS.forEach((building) => {
+            for (let by = building.y; by < building.y + building.height; by++) {
+                for (let bx = building.x; bx < building.x + building.width; bx++) {
+
+                    const isDoor = building.doorTile
+                        && bx === building.doorTile.x
+                        && by === building.doorTile.y;
+
+                    if (!isDoor) {
+                        this.createObstacle(bx * TILE_SIZE, by * TILE_SIZE);
+                    }
+
                 }
             }
-        }
+        });
 
-        // spawn player (unchanged)
-        this.player = new Player(this, 1200, 800);
+        // spawn player at the very bottom of the map, centered on the main
+        // path. Row 49 (the last row) is solid forest border with no gap
+        // like the top edge has, so row 48 is as far south as it's
+        // actually possible to stand.
+        this.player = new Player(this, 1200, 1552);
 
         this.physics.add.collider(this.player, this.obstacles);
 
@@ -58,17 +82,17 @@ export default class WorldScene extends Phaser.Scene {
             this.mapData.length * TILE_SIZE
         );
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-        this.cameras.main.setZoom(2);
+        this.cameras.main.setZoom(.75);
 
         // interaction setup
         this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.interactionTarget = null;
         this.interactionZones = [
-            { x: 37, y: 7, name: "Library" },
-            { x: 20, y: 16, name: "Gallery" },
-            { x: 54, y: 16, name: "Workshop" },
-            { x: 20, y: 6, name: "Northwest Building" },
-            { x: 54, y: 6, name: "Café" }
+            { x: 37, y: 11, name: "Library" },
+            { x: 14, y: 28, name: "Gallery" },
+            { x: 60, y: 28, name: "Workshop" },
+            { x: 16, y: 11, name: "Theatre" },
+            { x: 58, y: 11, name: "Café" }
         ];
     }
 
@@ -83,6 +107,22 @@ export default class WorldScene extends Phaser.Scene {
     this.player.update();
 
     this.updateInteractions();
+
+    this.updateDepthSorting();
+
+}
+// Lower on screen (larger Y) should render in front. Depth is keyed off
+// each object's ground-contact point, not its center, so a tall canopy
+// or roofline can still be hidden behind a player standing below it.
+// Player and world objects all use a bottom-center origin, so their own
+// .y already IS that ground-contact point — no extra offset needed.
+updateDepthSorting() {
+
+    this.player.setDepth(this.player.y);
+
+    this.worldObjects.forEach((object) => {
+        object.setDepth(object.y);
+    });
 
 }
 updateInteractions() {
@@ -117,8 +157,11 @@ updateInteractions() {
 
         if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
 
-            if (target.name === "Library") {
-                this.scene.start("Library");
+            const sceneKey = BUILDING_SCENES[target.name];
+
+            if (sceneKey) {
+                hud.hideInteraction();
+                this.scene.start(sceneKey);
             } else {
                 console.log("Entering", target.name, "(coming soon)");
             }
