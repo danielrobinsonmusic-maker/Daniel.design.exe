@@ -52,10 +52,19 @@ export default class BootScene extends Phaser.Scene {
         // Ground tiles
         // -------------------------------------------------
 
+        this.load.image("grass-base", "assets/tiles/grass-base.png");
+        this.load.image("grass-base1", "assets/tiles/grass-base1.png");
         this.load.image("grass1", "assets/tiles/grass1.png");
         this.load.image("flowers1", "assets/tiles/flowers1.png");
         this.load.image("flowers2", "assets/tiles/flowers2.png");
         this.load.image("flowers4", "assets/tiles/flowers4.png");
+        this.load.image("path", "assets/tiles/path.png");
+        this.load.image("path1", "assets/tiles/path1.png");
+        this.load.image("path2", "assets/tiles/path2.png");
+        this.load.image("path-corner", "assets/tiles/path-corner.png");
+        this.load.image("square1", "assets/tiles/square1.png");
+        this.load.image("square2", "assets/tiles/square2.png");
+        this.load.image("square3", "assets/tiles/square3.png");
 
         // -------------------------------------------------
         // Nature (trees)
@@ -105,6 +114,30 @@ export default class BootScene extends Phaser.Scene {
                 toriiTexture.add("content", 0, 110, 63, 1317, 900);
             }
         }
+
+        // tree1-4.png are each a 100x100 canvas with 21-25px of transparent
+        // padding below the actual trunk/foliage (measured via PIL alpha
+        // bbox) — the bottom-anchor origin was anchoring to the padded
+        // canvas edge, not the visible trunk base, so every tree rendered
+        // ~54-64 display px "too high." Most noticeable at the south
+        // border, where the gap between each tree's real bottom and its
+        // anchor let the path/grass show through right where the border
+        // should read as solid. Same named-sub-frame technique as
+        // ui-panel/torii-gate above.
+        const TREE_CROPS = {
+            tree1: [27, 18, 46, 58],
+            tree2: [24, 17, 51, 61],
+            tree3: [33, 19, 34, 56],
+            tree4: [32, 21, 34, 58]
+        };
+        Object.entries(TREE_CROPS).forEach(([key, [x, y, w, h]]) => {
+            if (this.textures.exists(key)) {
+                const tex = this.textures.get(key);
+                if (!tex.has("content")) {
+                    tex.add("content", 0, x, y, w, h);
+                }
+            }
+        });
 
         // Registered once here (not in WorldScene) since anims live on the
         // global AnimationManager — re-running WorldScene.create() every

@@ -9,6 +9,19 @@ const TREE_COLOR = 0x2f6b2f;
 const TREE_TEXTURES = ["tree1", "tree2", "tree3", "tree4"];
 const TREE_DISPLAY_SIZE = 256;
 
+// Each species' cropped "content" frame (see BootScene.js) has its own
+// aspect ratio — forcing all of them to a uniform 256x256 square would
+// stretch the narrower ones (tree3/tree4 read as pine-shaped, much
+// taller than wide). Keeping a fixed canopy height and deriving width
+// per species avoids that distortion, and reads as natural variety
+// between species instead.
+const TREE_ASPECT = {
+    tree1: 46 / 58,
+    tree2: 51 / 61,
+    tree3: 34 / 56,
+    tree4: 34 / 58
+};
+
 // Deterministic pseudo-random value in [0, 1) for a tile coordinate —
 // keeps each tree's species stable across re-renders (WorldScene.create()
 // re-runs every time the player re-enters the World) instead of
@@ -47,18 +60,17 @@ const BUILDING_TEXTURES = {
 // forest-border gap at the top of the map to mark the entrance to the
 // Woods/Overlook path.
 //
-// Vertical space here is tight: the map's north edge (world y=0) is a
-// hard camera-scroll limit — nothing above it is ever visible, no matter
-// how the camera is framed — and the Library's roof (the tallest
-// building, positioned right under this gap) starts at world y=80
-// (footprint bottom 480, minus its 400px-tall art). So the gate is sized
-// and anchored to fit inside that ~80px band instead of its natural
-// crop size, which would have half of it clipped above the map edge.
+// Anchored at the bottom of the gap row (the first row below the solid
+// NORTH_BUFFER_ROWS forest band — see Buildings.js/MapData.js), so it
+// sits exactly where the path crosses the tree line, with the buffer
+// band giving it (and the camera) real room above instead of clipping
+// against the map's true north edge.
 const TORII_CROP_WIDTH = 1317;
 const TORII_CROP_HEIGHT = 900;
+const TORII_SIZE_MULTIPLIER = 3;
 const TORII_BASE_X = (37 * TILE_SIZE) + (TILE_SIZE / 2);
-const TORII_BASE_Y = 72;
-const TORII_DISPLAY_HEIGHT = 64;
+const TORII_BASE_Y = (NORTH_BUFFER_ROWS + 1) * TILE_SIZE;
+const TORII_DISPLAY_HEIGHT = 64 * TORII_SIZE_MULTIPLIER;
 const TORII_DISPLAY_WIDTH = Math.round(TORII_DISPLAY_HEIGHT * TORII_CROP_WIDTH / TORII_CROP_HEIGHT);
 
 // Workshop-only accents: a lean-to covered work area and a tool crate,
@@ -129,9 +141,13 @@ export default class WorldObjects {
 
         if (this.scene.textures.exists(textureKey)) {
 
-            const sprite = this.scene.add.image(baseX, baseY, textureKey);
+            const texture = this.scene.textures.get(textureKey);
+            const frame = texture.has("content") ? "content" : undefined;
+            const aspect = TREE_ASPECT[textureKey] ?? 1;
+
+            const sprite = this.scene.add.image(baseX, baseY, textureKey, frame);
             sprite.setOrigin(0.5, 1);
-            sprite.setDisplaySize(TREE_DISPLAY_SIZE, TREE_DISPLAY_SIZE);
+            sprite.setDisplaySize(TREE_DISPLAY_SIZE * aspect, TREE_DISPLAY_SIZE);
 
             return sprite;
 

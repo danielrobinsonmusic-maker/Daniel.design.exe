@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import Player from "../entities/Player";
 import TileRenderer from "../world/TileRenderer";
 import WorldObjects from "../world/WorldObjects";
-import { TREES, createTownSquare } from "../world/MapData";
+import { TREES, createTownSquare, FOUNTAIN_TILE } from "../world/MapData";
 import { BUILDINGS, NORTH_BUFFER_ROWS } from "../world/Buildings";
 
 // Maps an interaction zone's display name to the scene it leads into.
@@ -46,15 +46,30 @@ export default class WorldScene extends Phaser.Scene {
         this.worldObjects = new WorldObjects(this).create();
 
         // animated fountain, replacing the old baked-in WATER tile patch —
-        // same center point: tile (37, 24), shifted down by
-        // NORTH_BUFFER_ROWS along with the rest of the original layout
-        // (see Buildings.js). The 4 frame images were padded (100x110,
-        // transparent fill) so each one's base sits at the same row (89)
-        // regardless of how tall that frame's water spray is — origin
-        // uses that fraction so the base itself doesn't jitter.
-        this.fountain = this.add.sprite(37 * TILE_SIZE + 16, (24 + NORTH_BUFFER_ROWS) * TILE_SIZE + 16, "fountain1");
+        // centered on FOUNTAIN_TILE (MapData.js), the same point
+        // TileRenderer.js centers the square2.png plaza patch on. The 4
+        // frame images were padded (100x110, transparent fill) so each one's
+        // base sits at the same row (89) regardless of how tall that
+        // frame's water spray is — origin uses that fraction so the base
+        // itself doesn't jitter.
+        this.fountain = this.add.sprite(
+            (FOUNTAIN_TILE.x * TILE_SIZE) + 16,
+            (FOUNTAIN_TILE.y * TILE_SIZE) + 16,
+            "fountain1"
+        );
         this.fountain.setOrigin(0.5, 89 / 110);
         this.fountain.setScale(2);
+
+        // That origin sits near the BOTTOM of the sprite's own canvas
+        // (81% of the way down), which means most of the sprite's total
+        // height renders above the anchor point — placing the anchor at
+        // the patch's center visually reads as the whole fountain sitting
+        // in the upper portion of the square2 patch, not centered in it.
+        // Shift down so the sprite's overall bounding box (not just its
+        // anchor) centers on the patch instead.
+        const patchCenterY = (FOUNTAIN_TILE.y * TILE_SIZE) + 16;
+        this.fountain.y = patchCenterY + (this.fountain.displayHeight * (this.fountain.originY - 0.5));
+
         this.fountain.play("fountain-flow");
 
         // trees: one solid tile per tree (same footprint as before)
@@ -99,7 +114,7 @@ export default class WorldScene extends Phaser.Scene {
             this.mapData.length * TILE_SIZE
         );
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-        this.cameras.main.setZoom(1);
+        this.cameras.main.setZoom(1.25);
 
         // interaction setup
         this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);

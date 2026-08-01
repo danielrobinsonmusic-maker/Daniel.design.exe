@@ -6,7 +6,8 @@ import { BUILDINGS, NORTH_BUFFER_ROWS } from "./Buildings";
 export const TILE = {
     GRASS: 0,
     STONE: 1,
-    WATER: 2
+    WATER: 2,
+    PLAZA: 3
 };
 
 const MAP_WIDTH = 75;
@@ -77,22 +78,36 @@ function createForestBorder(width, height, gapStart, gapEnd) {
 
 }
 
-// Paints a single tile (plus `width` tiles of padding on each side) at
-// (x, y) into a Set of "x,y" keys. Used by drawPath below. Building this
-// as a Set (rather than mutating the map array directly) means the same
-// tile data can be reused to keep scattered trees off the paths/square —
-// see computeScatteredTrees below.
-function paintTile(stoneSet, x, y, width) {
+// Path thickness is applied as a perpendicular offset relative to each
+// individual Bresenham step's own direction (see paintThick/drawLine
+// below) rather than a symmetric NxN square stamped at every point. A
+// symmetric stamp works fine along a straight run, but on the diagonal-
+// ish waypoint segments (steps alternate single-axis moves — see
+// drawLine's comment) two diagonally-adjacent squares union into
+// something noticeably wider than intended — a "3 wide" stamp could
+// read as 4-5 tiles wide right at the diagonal parts. Perpendicular-only
+// offsets keep width exact everywhere, and — unlike a symmetric
+// ±N stamp, which can only ever produce an odd width (2N+1) — they can
+// also produce an even width, which is how the 2-wide doorway approach
+// below is possible at all.
+const CORRIDOR_OFFSETS = [-1, 0, 1]; // main routes: 3 tiles wide
+const ENTRY_OFFSETS = [0, 1]; // final doorway approach: 2 tiles wide
 
-    for (let dy = -width; dy <= width; dy++) {
+// Paints one line-step's perpendicular thickness. `axis` is whichever
+// coordinate THIS step changed ("x" for a horizontal move, "y" for
+// vertical) — thickening always applies to the OTHER axis, so a
+// diagonal-ish line never has both axes thickened at the same point.
+function paintThick(stoneSet, x, y, axis, offsets) {
 
-        for (let dx = -width; dx <= width; dx++) {
+    offsets.forEach((offset) => {
 
-            stoneSet.add(`${x + dx},${y + dy}`);
-
+        if (axis === "x") {
+            stoneSet.add(`${x},${y + offset}`);
+        } else {
+            stoneSet.add(`${x + offset},${y}`);
         }
 
-    }
+    });
 
 }
 
@@ -101,7 +116,15 @@ function paintTile(stoneSet, x, y, width) {
 // 4-directionally connected instead of only touching at a tile corner —
 // important since a door's single walkable gap tile is only reachable
 // from tiles it shares an edge with, not just a corner.
-function drawLine(stoneSet, x1, y1, x2, y2, width) {
+//
+// pinchEndpoint: when true, (x2, y2) itself is thickened with a bare
+// [0] instead of `offsets`. Every door-approach spur's last waypoint IS
+// the doorTile — the single walkable gap in an otherwise solid wall
+// row/column — so ANY perpendicular offset there lands on a wall tile
+// immediately next to the gap, not another opening. Every other point
+// on the segment still gets the full width; only the exact threshold
+// tile is pinched back to 1-wide to match the gap it has to fit through.
+function drawLine(stoneSet, x1, y1, x2, y2, offsets, pinchEndpoint) {
 
     let x = x1;
     let y = y1;
@@ -113,7 +136,14 @@ function drawLine(stoneSet, x1, y1, x2, y2, width) {
 
     let err = dx - dy;
 
-    paintTile(stoneSet, x, y, width);
+    const offsetsFor = (px, py) => (pinchEndpoint && px === x2 && py === y2) ? [0] : offsets;
+
+    // The starting point has no step of its own yet — thicken it using
+    // whichever axis the first step below is about to move in (the same
+    // e2 > -dy test), so it's consistent with the rest of the segment
+    // instead of picking an axis arbitrarily.
+    const startAxis = (2 * err) > -dy ? "x" : "y";
+    paintThick(stoneSet, x, y, startAxis, offsetsFor(x, y));
 
     while (x !== x2 || y !== y2) {
 
@@ -122,13 +152,13 @@ function drawLine(stoneSet, x1, y1, x2, y2, width) {
         if (e2 > -dy) {
             err -= dy;
             x += sx;
-            paintTile(stoneSet, x, y, width);
+            paintThick(stoneSet, x, y, "x", offsetsFor(x, y));
         }
 
         if (e2 < dx) {
             err += dx;
             y += sy;
-            paintTile(stoneSet, x, y, width);
+            paintThick(stoneSet, x, y, "y", offsetsFor(x, y));
         }
 
     }
@@ -145,30 +175,59 @@ function shiftY(points) {
 }
 
 // A narrow, winding path connecting a series of [x, y] waypoints.
-function drawPath(stoneSet, points, width = 0) {
+// Defaults to the 2-wide doorway-approach offsets, pinching the very
+// last waypoint (see drawLine) since every call site that omits both
+// extra args is one of the 5 door-approach spurs, and their final
+// waypoint is always that building's doorTile. Corridor call sites pass
+// both CORRIDOR_OFFSETS and pinchFinalPoint: false explicitly — they
+// never end at a doorTile, so there's no wall to avoid bleeding into.
+function drawPath(stoneSet, points, offsets = ENTRY_OFFSETS, pinchFinalPoint = true) {
 
     for (let i = 0; i < points.length - 1; i++) {
 
         const [x1, y1] = points[i];
         const [x2, y2] = points[i + 1];
+        const isFinalSegment = i === points.length - 2;
 
-        drawLine(stoneSet, x1, y1, x2, y2, width);
+        drawLine(stoneSet, x1, y1, x2, y2, offsets, pinchFinalPoint && isFinalSegment);
 
     }
 
 }
 
-// Every paved tile in town: the square plaza plus every path/spur. Computed
-// once as a Set so it can both paint the ground layer and keep the tree
-// scatter (below) off the paths.
+// Town square rectangle bounds — exported so TileRenderer.js can tell
+// the outer perimeter ring apart from the rest of the plaza (it renders
+// with its own tile art; see the PLAZA zone logic there) without
+// duplicating these numbers.
+const TOWN_SQUARE_ROW_START = 19 + NORTH_BUFFER_ROWS;
+const TOWN_SQUARE_ROW_COUNT = 11;
+const TOWN_SQUARE_COL_START = 29;
+const TOWN_SQUARE_COL_COUNT = 17;
+
+export const TOWN_SQUARE_BOUNDS = {
+    minCol: TOWN_SQUARE_COL_START,
+    maxCol: TOWN_SQUARE_COL_START + TOWN_SQUARE_COL_COUNT - 1,
+    minRow: TOWN_SQUARE_ROW_START,
+    maxRow: TOWN_SQUARE_ROW_START + TOWN_SQUARE_ROW_COUNT - 1
+};
+
+// Every paved tile in town: the square plaza plus every path/spur. `stone`
+// is the full union (used to paint the ground layer and keep the tree
+// scatter below off every paved tile, plaza included); `plaza` is just
+// the town square rectangle, kept separate so createTownSquare() below
+// can tell plaza pavement apart from ordinary path/spur pavement — they
+// render with different tile art (see TileRenderer.js).
 function computeStoneTiles() {
 
     const stone = new Set();
+    const plaza = new Set();
 
     // Town Square
-    for (let row = 19 + NORTH_BUFFER_ROWS; row < 19 + NORTH_BUFFER_ROWS + 11; row++) {
-        for (let col = 29; col < 29 + 17; col++) {
-            stone.add(`${col},${row}`);
+    for (let row = TOWN_SQUARE_ROW_START; row < TOWN_SQUARE_ROW_START + TOWN_SQUARE_ROW_COUNT; row++) {
+        for (let col = TOWN_SQUARE_COL_START; col < TOWN_SQUARE_COL_START + TOWN_SQUARE_COL_COUNT; col++) {
+            const key = `${col},${row}`;
+            stone.add(key);
+            plaza.add(key);
         }
     }
 
@@ -176,46 +235,44 @@ function computeStoneTiles() {
     // solid wall, and it only opens south — so each path has to actually
     // curve around to approach from below, not just draw a straight line
     // to the door. Main routes are a tile wider than the entryways: each
-    // spur narrows to a single-tile "doorway pinch" for its final approach
-    // so the wider path doesn't bleed onto the wall tiles flanking a door.
+    // spur narrows to a 2-wide "doorway pinch" for its final approach so
+    // the wider path doesn't bleed onto the wall tiles flanking a door.
     // (Waypoints verified separately — no overlap with any footprint,
     // full connectivity from the entrance to every door — before this.)
-
-    const PATH_WIDTH = 1;
 
     // Entrance -> around the Theatre/Library gap -> open corridor -> square.
     // [37,0] used to be the gap itself; it's shifted to the new gap row by
     // shiftY same as everything else here.
     drawPath(stone, shiftY([
         [37, 0], [31, 3], [26, 6], [24, 10], [24, 13], [28, 16], [37, 17], [35, 18], [37, 19]
-    ]), PATH_WIDTH);
+    ]), CORRIDOR_OFFSETS, false);
 
     // Square -> winding south exit
     drawPath(stone, shiftY([
         [37, 19], [37, 29], [37, 31], [34, 35], [39, 40], [37, 45], [37, 49]
-    ]), PATH_WIDTH);
+    ]), CORRIDOR_OFFSETS, false);
 
     // Library door: short spur off the spine's [37,17] junction, entirely
     // a doorway approach so it stays pinched the whole way
     drawPath(stone, shiftY([[37, 17], [37, 14]]));
 
     // Theatre door: wide off the spine's [24,13] junction, pinched for entry
-    drawPath(stone, shiftY([[24, 13], [20, 13]]), PATH_WIDTH);
+    drawPath(stone, shiftY([[24, 13], [20, 13]]), CORRIDOR_OFFSETS, false);
     drawPath(stone, shiftY([[20, 13], [16, 11], [16, 10]]));
 
     // Café door: wide off the spine's [35,18] point, pinched for entry
-    drawPath(stone, shiftY([[35, 18], [44, 16], [50, 14]]), PATH_WIDTH);
+    drawPath(stone, shiftY([[35, 18], [44, 16], [50, 14]]), CORRIDOR_OFFSETS, false);
     drawPath(stone, shiftY([[50, 14], [56, 11], [58, 10]]));
 
     // Gallery door: wide off the south spine's [37,31] junction, pinched for entry
-    drawPath(stone, shiftY([[37, 31], [28, 30], [20, 28]]), PATH_WIDTH);
+    drawPath(stone, shiftY([[37, 31], [28, 30], [20, 28]]), CORRIDOR_OFFSETS, false);
     drawPath(stone, shiftY([[20, 28], [14, 29], [14, 27]]));
 
     // Workshop door: wide off the south spine's [37,31] junction, pinched for entry
-    drawPath(stone, shiftY([[37, 31], [46, 30], [54, 28]]), PATH_WIDTH);
+    drawPath(stone, shiftY([[37, 31], [46, 30], [54, 28]]), CORRIDOR_OFFSETS, false);
     drawPath(stone, shiftY([[54, 28], [60, 29], [60, 27]]));
 
-    return stone;
+    return { stone, plaza };
 
 }
 
@@ -336,7 +393,14 @@ function computeScatteredTrees(stoneTiles) {
 
 }
 
-const STONE_TILES = computeStoneTiles();
+const { stone: STONE_TILES, plaza: PLAZA_TILES } = computeStoneTiles();
+
+// Center of the town square rectangle (also its geometric center — the
+// rectangle is 17 cols x 11 rows, both odd, so this lands exactly on a
+// tile rather than between two). This is where the fountain sprite sits
+// (see WorldScene.js) and where TileRenderer.js centers the square2.png
+// patch — single source of truth so those two never drift apart.
+export const FOUNTAIN_TILE = { x: 37, y: 24 + NORTH_BUFFER_ROWS };
 
 // Tile coordinates of every tree. WorldObjects.js renders these as
 // standalone placeholders; WorldScene.js builds their collision from the
@@ -371,7 +435,7 @@ export function createTownSquare() {
         const [x, y] = key.split(",").map(Number);
 
         if (map[y] && map[y][x] !== undefined) {
-            map[y][x] = TILE.STONE;
+            map[y][x] = PLAZA_TILES.has(key) ? TILE.PLAZA : TILE.STONE;
         }
 
     });
