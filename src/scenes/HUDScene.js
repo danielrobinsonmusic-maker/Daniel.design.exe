@@ -18,7 +18,7 @@ export default class HUDScene extends Phaser.Scene {
             3,
             3,
             320,
-            92,
+            112,
             0x000000,
             0.25
         );
@@ -28,7 +28,7 @@ export default class HUDScene extends Phaser.Scene {
             0,
             0,
             320,
-            92,
+            112,
             0xd8d5c8
         );
 
@@ -37,7 +37,7 @@ export default class HUDScene extends Phaser.Scene {
         // Title bar
         const titleBar = this.add.rectangle(
             0,
-            -34,
+            -44,
             320,
             24,
             0x3f5f9f
@@ -46,7 +46,7 @@ export default class HUDScene extends Phaser.Scene {
         // Window title
         const windowTitle = this.add.text(
             -150,
-            -34,
+            -44,
             "Daniel.design.exe",
             {
                 fontFamily: "monospace",
@@ -58,7 +58,7 @@ export default class HUDScene extends Phaser.Scene {
         // Fake window controls
         const controls = this.add.text(
             146,
-            -34,
+            -44,
             "_ □ X",
             {
                 fontFamily: "monospace",
@@ -70,7 +70,7 @@ export default class HUDScene extends Phaser.Scene {
         // Location title
         this.titleText = this.add.text(
             0,
-            -6,
+            -14,
             "",
             {
                 fontFamily: "monospace",
@@ -79,15 +79,18 @@ export default class HUDScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
 
-        // Prompt
+        // Prompt. Word-wrapped since some prompts (the woods' flavor text)
+        // run longer than a single line fits at this panel width.
         this.promptText = this.add.text(
             0,
-            24,
+            22,
             "",
             {
                 fontFamily: "monospace",
                 fontSize: "14px",
-                color: "#444444"
+                color: "#444444",
+                align: "center",
+                wordWrap: { width: 280 }
             }
         ).setOrigin(0.5);
 
@@ -106,10 +109,10 @@ export default class HUDScene extends Phaser.Scene {
 
     }
 
-    showInteraction(location) {
+    showInteraction(location, prompt = "Press [E] to Open") {
 
         this.titleText.setText(location);
-        this.promptText.setText("Press [E] to Open");
+        this.promptText.setText(prompt);
 
         if (this.panel.visible) {
             return;
@@ -119,7 +122,7 @@ export default class HUDScene extends Phaser.Scene {
 
         this.tweens.add({
             targets: this.panel,
-            y: this.scale.height - 70,
+            y: this.scale.height - 80,
             alpha: 1,
             duration: 180,
             ease: "Quad.out"

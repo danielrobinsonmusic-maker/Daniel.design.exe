@@ -12,6 +12,7 @@ import LibraryShelfScene from "./scenes/LibraryShelfScene";
 import GalleryScene from "./scenes/GalleryScene";
 import WorkshopScene from "./scenes/WorkshopScene";
 import CafeScene from "./scenes/CafeScene";
+import OverlookScene from "./scenes/OverlookScene";
 const config = {
     type: Phaser.AUTO,
 
@@ -49,8 +50,12 @@ const config = {
         LibraryShelfScene,
         GalleryScene,
         WorkshopScene,
-        CafeScene
+        CafeScene,
+        OverlookScene
     ]
 };
 
-export default new Phaser.Game(config);
+const game = new Phaser.Game(config);
+window.__game = game;
+
+export default game;

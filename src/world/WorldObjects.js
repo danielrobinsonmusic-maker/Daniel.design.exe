@@ -1,8 +1,22 @@
 import { TREES } from "./MapData";
-import { BUILDINGS } from "./Buildings";
+import { BUILDINGS, NORTH_BUFFER_ROWS } from "./Buildings";
 
 const TILE_SIZE = 32;
 const TREE_COLOR = 0x2f6b2f;
+
+// Real tree art (square canvases, varying species) displayed at a fixed
+// size regardless of native resolution differences between the 4 files.
+const TREE_TEXTURES = ["tree1", "tree2", "tree3", "tree4"];
+const TREE_DISPLAY_SIZE = 256;
+
+// Deterministic pseudo-random value in [0, 1) for a tile coordinate —
+// keeps each tree's species stable across re-renders (WorldScene.create()
+// re-runs every time the player re-enters the World) instead of
+// reshuffling species on every visit.
+function hashTile(x, y) {
+    const v = Math.sin((x * 12.9898) + (y * 78.233)) * 43758.5453;
+    return v - Math.floor(v);
+}
 
 // Extra tiles of height added above a building's footprint so there's
 // room for a peaked roof + front facade in the eventual real art.
@@ -25,6 +39,27 @@ const BUILDING_TEXTURES = {
     "Café": "cafe-building",
     "Theatre": "theatre-building"
 };
+
+// torii.png's real content is the "content" sub-frame BootScene registers
+// (measured via PIL alpha bbox) — using that named frame instead of a
+// GameObject-level setCrop() so origin/setDisplaySize math is based on
+// the actual visible art, not the full padded canvas. Straddles the
+// forest-border gap at the top of the map to mark the entrance to the
+// Woods/Overlook path.
+//
+// Vertical space here is tight: the map's north edge (world y=0) is a
+// hard camera-scroll limit — nothing above it is ever visible, no matter
+// how the camera is framed — and the Library's roof (the tallest
+// building, positioned right under this gap) starts at world y=80
+// (footprint bottom 480, minus its 400px-tall art). So the gate is sized
+// and anchored to fit inside that ~80px band instead of its natural
+// crop size, which would have half of it clipped above the map edge.
+const TORII_CROP_WIDTH = 1317;
+const TORII_CROP_HEIGHT = 900;
+const TORII_BASE_X = (37 * TILE_SIZE) + (TILE_SIZE / 2);
+const TORII_BASE_Y = 72;
+const TORII_DISPLAY_HEIGHT = 64;
+const TORII_DISPLAY_WIDTH = Math.round(TORII_DISPLAY_HEIGHT * TORII_CROP_WIDTH / TORII_CROP_HEIGHT);
 
 // Workshop-only accents: a lean-to covered work area and a tool crate,
 // so it reads as more utilitarian/weathered than the other buildings
@@ -53,16 +88,54 @@ export default class WorldObjects {
             objects.push(...this.createBuilding(building));
         });
 
+        const gate = this.createToriiGate();
+        if (gate) objects.push(gate);
+
         return objects;
 
     }
 
-    // A tree's footprint is a single tile; the placeholder canopy rises
-    // two tiles above that ground-contact point.
+    // Marks the entrance to the hidden path: straddles the forest-border
+    // gap the same way a tree does — bottom-anchored so it stands on the
+    // path rather than floating, purely decorative (no collision, same
+    // as the fountain) since it's a gate you walk through, not a wall.
+    createToriiGate() {
+
+        if (!this.scene.textures.exists("torii-gate")) {
+            return null;
+        }
+
+        const toriiTexture = this.scene.textures.get("torii-gate");
+        const frame = toriiTexture.has("content") ? "content" : undefined;
+
+        const gate = this.scene.add.image(TORII_BASE_X, TORII_BASE_Y, "torii-gate", frame);
+        gate.setOrigin(0.5, 1);
+        gate.setDisplaySize(TORII_DISPLAY_WIDTH, TORII_DISPLAY_HEIGHT);
+
+        return gate;
+
+    }
+
+    // A tree's footprint is a single tile (collision, unchanged); the
+    // visual sits on top of that ground-contact point, bottom-anchored.
     createTree(tileX, tileY) {
 
         const baseX = (tileX * TILE_SIZE) + (TILE_SIZE / 2);
         const baseY = (tileY * TILE_SIZE) + TILE_SIZE;
+
+        const textureKey = TREE_TEXTURES[
+            Math.floor(hashTile(tileX, tileY) * TREE_TEXTURES.length) % TREE_TEXTURES.length
+        ];
+
+        if (this.scene.textures.exists(textureKey)) {
+
+            const sprite = this.scene.add.image(baseX, baseY, textureKey);
+            sprite.setOrigin(0.5, 1);
+            sprite.setDisplaySize(TREE_DISPLAY_SIZE, TREE_DISPLAY_SIZE);
+
+            return sprite;
+
+        }
 
         const tree = this.scene.add.rectangle(
             baseX,
