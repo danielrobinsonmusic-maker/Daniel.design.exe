@@ -1,162 +1,71 @@
-import Phaser from "phaser";
-import Player from "../entities/Player";
-export default class LibraryScene extends Phaser.Scene {
+import AdventureScene from "../adventure/AdventureScene";
+
+// Reference implementation of the Room level for the point-and-click
+// adventure system (see AdventureScene.js) — the pattern this establishes
+// (backdrop + rectangular hitboxes + bottom bar + fade transitions) is
+// meant to be reused for Gallery/Café/Workshop/Theatre's own Room scenes.
+// Registered under the same "Library" scene key the old walk-around
+// version used, so WorldScene's BUILDING_SCENES map needs no changes.
+//
+// The librarian's dialogue used to display inline, right here, over this
+// Room's own backdrop (see git history). It now lives in its own
+// LibrarianCloseupScene — Talk fades there first, same as Browse already
+// faded to BookshelfCloseup — so Room itself no longer owns any dialogue
+// state.
+const IDLE_TEXT = "Use your mouse to explore the Library.";
+const NATIVE_WIDTH = 1672;
+const NATIVE_HEIGHT = 941;
+const CAT_NAME = "Ed the Cat";
+
+export default class LibraryScene extends AdventureScene {
 
     constructor() {
         super("Library");
     }
 
-    create() {
+    buildScene() {
 
-        const TILE = 32;
+        this.backSceneKey = "World";
 
-        // Floor
-        for (let y = 0; y < 17; y++) {
+        this.setBackdrop("library-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 
-            for (let x = 0; x < 25; x++) {
-
-                this.add.rectangle(
-                    x * TILE + 16,
-                    y * TILE + 16,
-                    TILE,
-                    TILE,
-                    0xd9c9a2
-                ).setStrokeStyle(1, 0xb59b70);
-
-            }
-
-        }
-
-        // Title
-        this.add.text(
-            16,
-            12,
-            "Library",
-            {
-                fontFamily: "monospace",
-                fontSize: "18px",
-                color: "#222222"
-            }
-        );
-
-        // Placeholder bookshelf
-        this.add.rectangle(
-            80,
-            160,
-            96,
-            32,
-            0x6b4423
-        );
-
-        this.add.text(
-            40,
-            145,
-            "Bookshelf",
-            {
-                fontFamily: "monospace",
-                fontSize: "12px",
-                color: "#ffffff"
-            }
-        );
-
-        // Placeholder desk
-        this.add.rectangle(
-            360,
-            220,
-            96,
-            48,
-            0x8b5a2b
-        );
-
-        this.add.text(
-            335,
-            205,
-            "Desk",
-            {
-                fontFamily: "monospace",
-                fontSize: "12px",
-                color: "#ffffff"
-            }
-        );
-        this.interactKey = this.input.keyboard.addKey(
-    Phaser.Input.Keyboard.KeyCodes.E
-);
-
-this.bookshelf = {
-    x: 2,
-    y: 5,
-    title: "Bookshelf"
-};
-this.player = new Player(this, 320, 420);
-
-this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-this.cameras.main.setZoom(2);
-
-this.physics.world.setBounds(
-    0,
-    0,
-    800,
-    600
-);
-        // Exit instructions
-        this.add.text(
-            16,
-            500,
-            "ESC = Return Outside (temporary)",
-            {
-                fontFamily: "monospace",
-                fontSize: "14px",
-                color: "#333333"
-            }
-        );
-
-        this.input.keyboard.once("keydown-ESC", () => {
-
-            this.scene.start("World");
-
+        this.addHitbox({
+            xRange: [0.09, 0.27],
+            yRange: [0.25, 0.70],
+            verb: "Talk",
+            onClick: () => this.fadeTo("LibrarianCloseup")
         });
-this.scene.bringToTop("HUD");
-    }
-update() {
 
-    this.player.update();
-    this.updateInteractions();
+        this.addHitbox({
+            xRange: [0.28, 0.43],
+            yRange: [0.40, 0.62],
+            verb: "Pet",
+            onClick: () => this.petCat()
+        });
 
-}
-updateInteractions() {
+        this.addHitbox({
+            xRange: [0.62, 0.92],
+            yRange: [0.08, 0.78],
+            verb: "Browse",
+            onClick: () => this.fadeTo("BookshelfCloseup")
+        });
 
-    const TILE_SIZE = 32;
-
-    const playerTileX = Math.floor(this.player.x / TILE_SIZE);
-    const playerTileY = Math.floor(this.player.y / TILE_SIZE);
-
-    const distance =
-        Math.abs(playerTileX - this.bookshelf.x) +
-        Math.abs(playerTileY - this.bookshelf.y);
-
-    const hud = this.scene.get("HUD");
-
-    if (distance <= 1) {
-
-        hud.showInteraction(this.bookshelf.title);
-
-       if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
-
-    hud.hideInteraction();
-
-    this.scene.pause();
-
-    this.scene.launch("LibraryShelf");
-
-    this.scene.bringToTop("LibraryShelf");
-
-}
-
-    } else {
-
-        hud.hideInteraction();
+        this.bar.setText(IDLE_TEXT);
 
     }
 
-}
+    // Endpoint interaction — no further scene depth, just a flavor line
+    // that reverts to the idle prompt after a beat. (No audio asset for a
+    // purr exists in this project yet — see AudioManager.js's dead-file
+    // note in CLAUDE.md — so this is text-only for now.)
+    petCat() {
+
+        this.bar.setText("Purrrr...", [], CAT_NAME);
+
+        this.time.delayedCall(2500, () => {
+            this.bar.setText(IDLE_TEXT);
+        });
+
+    }
+
 }

@@ -31,6 +31,12 @@ const library = [
         folder: "case-studies"
     },
     {
+        id: "news",
+        title: "News and Featured Work",
+        type: ContentType.GALLERY,
+        folder: "news"
+    },
+    {
         id: "design",
         title: "Design Philosophy",
         type: ContentType.TEXT,

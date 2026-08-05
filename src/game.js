@@ -7,11 +7,13 @@ import WorldScene from "./scenes/WorldScene";
 import HUDScene from "./scenes/HUDScene";
 import AppScene from "./scenes/AppScene";
 import LibraryScene from "./scenes/LibraryScene";
-import ResumeScene from "./scenes/DocumentViewerScene";
-import LibraryShelfScene from "./scenes/LibraryShelfScene";
+import LibrarianCloseupScene from "./scenes/LibrarianCloseupScene";
+import BookshelfCloseupScene from "./scenes/BookshelfCloseupScene";
+import BookTakeoverScene from "./scenes/BookTakeoverScene";
 import GalleryScene from "./scenes/GalleryScene";
 import WorkshopScene from "./scenes/WorkshopScene";
 import CafeScene from "./scenes/CafeScene";
+import TheatreScene from "./scenes/TheatreScene";
 import OverlookScene from "./scenes/OverlookScene";
 const config = {
     type: Phaser.AUTO,
@@ -46,13 +48,17 @@ const config = {
         HUDScene,
         AppScene,
         LibraryScene,
-        ResumeScene,
-        LibraryShelfScene,
+        LibrarianCloseupScene,
+        BookshelfCloseupScene,
+        BookTakeoverScene,
         GalleryScene,
         WorkshopScene,
         CafeScene,
+        TheatreScene,
         OverlookScene
     ]
 };
 
-export default new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+export default game;

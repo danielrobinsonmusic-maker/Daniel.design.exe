@@ -14,11 +14,14 @@ const GRASS_BASE_KEY = "grass-base";
 const GRASS_BASE_ALT_KEY = "grass-base1";
 const GRASS_BASE_ALT_CHANCE = 0.10;
 
-// grass1/flowers1/flowers2/flowers4 are decorative "clump" sprites, not
-// tileable textures — measured directly: only 11-18% of each canvas is
-// actually opaque, the rest is transparent padding around a small
-// centered clump. They're scattered sparsely on TOP of the base layer as
-// decoration (not coverage), each drawn at its own natural cropped size.
+// Scattered sparsely on TOP of the base layer as decoration (not
+// coverage). grass1.png is a decorative "clump" sprite on a mostly-
+// transparent canvas — measured directly: only ~14% of its canvas is
+// actually opaque, drawn at that natural cropped size. flowers1-4.png
+// are full-bleed seamless tiles like grass-base.png (no meaningful
+// transparency to crop), drawn at a normal tile footprint instead — see
+// isFullBleed, which tells the two kinds apart automatically so this
+// list doesn't need to track which is which.
 const GRASS_VARIANTS = [
     { key: "grass1", upTo: 0.80 },
     { key: "flowers1", upTo: 0.87 },
@@ -214,6 +217,54 @@ function getOpaqueBounds(image) {
 
 }
 
+// A decoration variant is either a small clump on a mostly-transparent
+// canvas (the original grass1.png: real alpha, opaque bounds much
+// smaller than the full image — drawn at its own natural cropped size)
+// or a full-bleed seamless tile with no meaningful transparency to crop
+// (getOpaqueBounds finds "opaque everywhere" and returns the whole
+// canvas — every flowers1-4.png got replaced with this style, same
+// convention as grass-base.png). A full-bleed image needs to render at
+// a normal tile footprint instead of its native pixel size (otherwise
+// it draws at native resolution — 1254px square in practice — massively
+// oversized against a 32px tile) and without jitter (jittering a tile
+// meant to butt edge-to-edge would open a gap at the offset edge).
+function isFullBleed(image, bounds) {
+    return bounds.sw >= image.width - 2 && bounds.sh >= image.height - 2;
+}
+
+// AmbientWildlife.js needs real flower-tile locations to spawn butterflies
+// near — walks the exact same per-tile decision render() uses below
+// (shouldPlaceDecoration + pickGrassVariant, including the runtime check
+// for which variant textures actually loaded) rather than a second,
+// hardcoded approximation that could quietly drift from what actually got
+// painted (e.g. if grass1.png goes missing, every decorated tile becomes a
+// flower variant instead of ~26% of them — a fixed threshold would miss
+// that). "Flower" means any variant key other than the plain grass1 clump.
+export function findFlowerTiles(scene, map) {
+
+    const availableVariants = GRASS_VARIANTS.filter(({ key }) => scene.textures.exists(key));
+    if (!availableVariants.length) return [];
+
+    const flowers = [];
+
+    for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+
+            if (map[y][x] !== TILE.GRASS) continue;
+            if (!shouldPlaceDecoration(x, y)) continue;
+
+            const key = pickGrassVariant(x, y, availableVariants);
+            if (key.startsWith("flowers")) {
+                flowers.push([x, y]);
+            }
+
+        }
+    }
+
+    return flowers;
+
+}
+
 export default class TileRenderer {
     constructor(scene) {
         this.scene = scene;
@@ -288,9 +339,13 @@ export default class TileRenderer {
                 }
             }
 
-            // Decoration layer: sparse clumps scattered on top of the base,
-            // each drawn at its own natural cropped-opaque size (no
-            // doubling/overlap needed — this is decoration, not coverage).
+            // Decoration layer: scattered on top of the base. Two kinds of
+            // variant, told apart by isFullBleed: small clumps (grass1.png)
+            // draw at their own natural cropped-opaque size with jitter, so
+            // they read as loose scattered detail; full-bleed seamless
+            // tiles (flowers1-4.png as of the latest art) draw at a normal
+            // tile footprint with no jitter, so they read as an occasional
+            // different ground tile rather than a giant floating image.
             // Only variants whose texture actually loaded are used — a
             // missing file (Phaser logs a load error but doesn't throw)
             // would otherwise draw its "missing texture" placeholder tile
@@ -299,11 +354,13 @@ export default class TileRenderer {
 
             const sourceImages = {};
             const bounds = {};
+            const fullBleed = {};
 
             availableVariants.forEach(({ key }) => {
                 const image = this.scene.textures.get(key).getSourceImage();
                 sourceImages[key] = image;
                 bounds[key] = getOpaqueBounds(image);
+                fullBleed[key] = isFullBleed(image, bounds[key]);
             });
 
             for (let y = 0; y < HEIGHT; y++) {
@@ -314,6 +371,19 @@ export default class TileRenderer {
 
                     const key = pickGrassVariant(x, y, availableVariants);
                     const image = sourceImages[key];
+
+                    if (fullBleed[key]) {
+
+                        ctx.drawImage(
+                            image,
+                            x * TILE_SIZE, y * TILE_SIZE,
+                            TILE_SIZE, TILE_SIZE
+                        );
+
+                        continue;
+
+                    }
+
                     const { sx, sy, sw, sh } = bounds[key];
 
                     const jitterX = (hashTile(x, y, 1) - 0.5) * JITTER;

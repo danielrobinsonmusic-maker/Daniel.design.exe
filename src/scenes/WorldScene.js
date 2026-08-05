@@ -1,18 +1,20 @@
 import Phaser from "phaser";
 import Player from "../entities/Player";
 import TileRenderer from "../world/TileRenderer";
-import WorldObjects from "../world/WorldObjects";
+import WorldObjects, { DECOR } from "../world/WorldObjects";
 import { TREES, createTownSquare, FOUNTAIN_TILE } from "../world/MapData";
 import { BUILDINGS, NORTH_BUFFER_ROWS } from "../world/Buildings";
+import AmbientWildlife from "../world/AmbientWildlife";
 
 // Maps an interaction zone's display name to the scene it leads into.
-// Names with no entry here (e.g. "Theatre") fall through to
-// the console.log placeholder — they don't have an interior yet.
+// Names with no entry here fall through to the console.log placeholder —
+// they don't have an interior yet.
 const BUILDING_SCENES = {
     "Library": "Library",
     "Gallery": "Gallery",
     "Workshop": "Workshop",
-    "Café": "Cafe"
+    "Café": "Cafe",
+    "Theatre": "Theatre"
 };
 
 export default class WorldScene extends Phaser.Scene {
@@ -77,6 +79,13 @@ export default class WorldScene extends Phaser.Scene {
             this.createObstacle(x * TILE_SIZE, y * TILE_SIZE);
         });
 
+        // decor (benches/lampposts/signposts/flower boxes): same
+        // single-tile-at-the-base collision as trees — these are physical
+        // objects sitting on the ground, not passable.
+        DECOR.forEach(({ x, y }) => {
+            this.createObstacle(x * TILE_SIZE, y * TILE_SIZE);
+        });
+
         // buildings: solid across the whole footprint except the door tile
         BUILDINGS.forEach((building) => {
             for (let by = building.y; by < building.y + building.height; by++) {
@@ -132,6 +141,13 @@ export default class WorldScene extends Phaser.Scene {
         // player through a 3-stage prompt instead of a single "Press E to
         // Open" — see updateWoodsInteraction below.
         this.woodsState = "initial"; // "initial" -> "thinking" -> "ready"
+
+        // Background-only birds/butterflies — no collision, no player
+        // interaction. Torn down on shutdown since create() re-runs every
+        // time the player re-enters World, which would otherwise stack a
+        // second, independent set of spawn timers on top of the last one.
+        this.wildlife = new AmbientWildlife(this);
+        this.events.once("shutdown", () => this.wildlife.destroy());
     }
 
     createObstacle(x, y) {

@@ -18,6 +18,10 @@ const MAP_WIDTH = 75;
 // original shape just shifted down to leave room up top.
 const MAP_HEIGHT = 50 + NORTH_BUFFER_ROWS;
 
+// Shared by the primary scatter and every density bump pass below — stay
+// clear of the forest border ring itself.
+const EDGE_MARGIN = 3;
+
 // Ornamental trees scattered around the town square. Repositioned to clear
 // the canopy-vs-path/building check below (trees render much bigger than
 // they used to, so the original close-to-the-buildings spots no longer
@@ -323,6 +327,39 @@ function isCanopyClear(unsafe, tx, ty) {
 
 }
 
+// Adds roughly `pct` more trees on top of whatever's already in `trees`,
+// via a finer grid + its own seed so it can find gaps the coarser
+// primary scatter's canopy-clear check skipped over (see the two call
+// sites in computeScatteredTrees below — each successive bump is layered
+// on the running total, so "another 10%" after an existing "~15%" bump
+// compounds rather than overwriting it). Mutates `trees`/`unsafe` in
+// place and stops once it's added enough for this bump, so it stays
+// additive rather than open-ended.
+function applyDensityBump(trees, unsafe, seed, pct) {
+
+    const target = Math.round(trees.length * pct);
+
+    const bumpRandom = createSeededRandom(seed);
+    const BUMP_SPACING = 1;
+    let added = 0;
+
+    for (let gy = EDGE_MARGIN; gy < MAP_HEIGHT - EDGE_MARGIN && added < target; gy += BUMP_SPACING) {
+
+        for (let gx = EDGE_MARGIN; gx < MAP_WIDTH - EDGE_MARGIN && added < target; gx += BUMP_SPACING) {
+
+            if (bumpRandom() > 0.5) continue;
+            if (!isCanopyClear(unsafe, gx, gy)) continue;
+
+            trees.push([gx, gy]);
+            unsafe.add(`${gx},${gy}`);
+            added++;
+
+        }
+
+    }
+
+}
+
 // Scatters trees across open grass, keeping clear of: the paths/square,
 // every building's full visual extent (footprint + roof, not just the
 // footprint), and the entrance funnel below the forest gap.
@@ -368,7 +405,6 @@ function computeScatteredTrees(stoneTiles) {
     const random = createSeededRandom(1337);
 
     const SPACING = 3;
-    const EDGE_MARGIN = 3; // stay clear of the forest border ring itself
     const PLACE_CHANCE = 1.0;
 
     for (let gy = EDGE_MARGIN; gy < MAP_HEIGHT - EDGE_MARGIN; gy += SPACING) {
@@ -388,6 +424,15 @@ function computeScatteredTrees(stoneTiles) {
         }
 
     }
+
+    // Denser supplemental passes on open grass/flower ground, layered on
+    // top of (not reshuffling) the primary scatter above and each other —
+    // each call's pct is relative to the running total at that point, so
+    // these compound rather than each being 15%/10% of the original
+    // baseline. Two separate seeds so the two passes don't just retrace
+    // each other's candidates.
+    applyDensityBump(trees, unsafe, 9001, 0.15);
+    applyDensityBump(trees, unsafe, 4021, 0.10);
 
     return trees;
 

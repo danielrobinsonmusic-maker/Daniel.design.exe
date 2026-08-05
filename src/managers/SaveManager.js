@@ -17,4 +17,29 @@ export default class SaveManager {
     static clear() {
         localStorage.removeItem(this.SAVE_KEY);
     }
+
+    // Shallow-merges into whatever's already saved (e.g. { name }) instead
+    // of overwriting it — callers adding a new top-level field (flags,
+    // per-building state, etc.) don't need to know what else is in there.
+    static update(partial) {
+        const merged = { ...(this.load() || {}), ...partial };
+        this.save(merged);
+        return merged;
+    }
+
+    // Generic persistent boolean-flag store, meant to be reused by every
+    // building's dialogue/interaction state (not just the Library) —
+    // namespace keys by building/NPC/question, e.g.
+    // "library.librarian.q.meta-years".
+    static getFlags() {
+        return (this.load() || {}).flags || {};
+    }
+
+    static hasFlag(key) {
+        return !!this.getFlags()[key];
+    }
+
+    static setFlag(key, value = true) {
+        this.update({ flags: { ...this.getFlags(), [key]: value } });
+    }
 }

@@ -1,73 +1,27 @@
-import Phaser from "phaser";
+import AdventureScene from "../adventure/AdventureScene";
 
-export default class WorkshopScene extends Phaser.Scene {
+// Room level for the Workshop — backdrop + idle prompt only for now, no
+// hitboxes yet (same starting point the Library's Room scene had before
+// its Talk/Pet/Browse interactions were added). Registered under the
+// same "Workshop" scene key the old flat-color placeholder used, so
+// WorldScene's BUILDING_SCENES map needs no changes.
+const IDLE_TEXT = "Use your mouse to explore the Workshop.";
+const NATIVE_WIDTH = 1672;
+const NATIVE_HEIGHT = 940;
+
+export default class WorkshopScene extends AdventureScene {
 
     constructor() {
         super("Workshop");
     }
 
-    create() {
+    buildScene() {
 
-        const TILE = 32;
+        this.backSceneKey = "World";
 
-        // Floor
-        for (let y = 0; y < 17; y++) {
+        this.setBackdrop("workshop-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 
-            for (let x = 0; x < 30; x++) {
-
-                this.add.rectangle(
-                    x * TILE + 16,
-                    y * TILE + 16,
-                    TILE,
-                    TILE,
-                    0xd9c9a2
-                ).setStrokeStyle(1, 0xb59b70);
-
-            }
-
-        }
-
-        // Title
-        this.add.text(
-            16,
-            12,
-            "Workshop",
-            {
-                fontFamily: "monospace",
-                fontSize: "18px",
-                color: "#222222"
-            }
-        );
-
-        // Placeholder notice
-        this.add.text(
-            480,
-            270,
-            "Coming soon",
-            {
-                fontFamily: "monospace",
-                fontSize: "24px",
-                color: "#555555"
-            }
-        ).setOrigin(0.5);
-
-        // Exit instructions
-        this.add.text(
-            16,
-            500,
-            "ESC = Return Outside (temporary)",
-            {
-                fontFamily: "monospace",
-                fontSize: "14px",
-                color: "#333333"
-            }
-        );
-
-        this.input.keyboard.once("keydown-ESC", () => {
-
-            this.scene.start("World");
-
-        });
+        this.bar.setText(IDLE_TEXT);
 
     }
 

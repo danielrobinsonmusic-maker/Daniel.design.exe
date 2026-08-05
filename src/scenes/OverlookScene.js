@@ -39,6 +39,26 @@ const SHOOTING_STAR_END = { x: 444, y: 90 };
 const SHOOTING_STAR_MIN_DELAY = 15000;
 const SHOOTING_STAR_MAX_DELAY = 30000;
 
+// Falling petals: same rare, randomized-interval pacing as the shooting
+// star above (own schedule, not tied to it) — occasional enough to notice
+// individually rather than a steady flurry. Delays trimmed 10% (from
+// 12000-25000) to spawn 10% more often; PETAL_EXTRA_CHANCE below adds a
+// second petal on 10% of triggers to raise the average petal count by the
+// same 10%, independent of the frequency change.
+const PETAL_MIN_DELAY = 10800;
+const PETAL_MAX_DELAY = 22500;
+const PETAL_EXTRA_CHANCE = 0.10;
+const PETAL_DISPLAY_SIZE = 12; // px, long edge
+const PETAL_FALL_MIN_DURATION = 6000;
+const PETAL_FALL_MAX_DURATION = 9500;
+const PETAL_DRIFT_MIN_RANGE = 12; // px either side of center per drift cycle
+const PETAL_DRIFT_MAX_RANGE = 26;
+const PETAL_DRIFT_MIN_DURATION = 1200;
+const PETAL_DRIFT_MAX_DURATION = 2200;
+const PETAL_ROTATE_MIN_DURATION = 3000;
+const PETAL_ROTATE_MAX_DURATION = 6000;
+const PETAL_FADE_FRACTION = 0.3; // final portion of the fall spent fading out
+
 export default class OverlookScene extends Phaser.Scene {
 
     constructor() {
@@ -59,6 +79,7 @@ export default class OverlookScene extends Phaser.Scene {
             this.createFirefly(pos.x, pos.y, FIREFLY_COLORS[i % FIREFLY_COLORS.length]);
         });
         this.scheduleNextShootingStar();
+        this.scheduleNextPetal();
 
         this.ponderPromptReady = false;
         this.time.delayedCall(PONDER_PROMPT_DELAY, () => {
@@ -163,6 +184,101 @@ export default class OverlookScene extends Phaser.Scene {
                     onComplete: () => star.destroy()
                 });
             }
+        });
+
+    }
+
+    // Independent of the shooting star's own loop above — same rare-random-
+    // interval technique, separate schedule, so the two never sync up.
+    scheduleNextPetal() {
+
+        const delay = Phaser.Math.Between(PETAL_MIN_DELAY, PETAL_MAX_DELAY);
+
+        this.time.delayedCall(delay, () => {
+            this.spawnPetal();
+            if (Math.random() < PETAL_EXTRA_CHANCE) this.spawnPetal();
+            this.scheduleNextPetal();
+        });
+
+    }
+
+    // A single petal: falls from near the top of the screen to below its
+    // bottom edge, with a slow side-to-side drift (its own repeating yoyo
+    // tween, independent of the fall's duration/progress) and a slow
+    // continuous rotation layered on top — same visual language planned
+    // for the town square's petals, just triggered on a simple loop here
+    // instead of tied to flower tiles. Purely decorative: no collision, no
+    // interaction with the player or anything else in the scene.
+    spawnPetal() {
+
+        if (!this.textures.exists("petal")) return;
+
+        const { width, height } = this.scale;
+
+        const startX = Phaser.Math.Between(20, width - 20);
+        const startY = Phaser.Math.Between(-20, 20);
+
+        const texture = this.textures.get("petal");
+        const frame = texture.has("content") ? "content" : undefined;
+
+        const petal = this.add.image(startX, startY, "petal", frame);
+
+        const aspect = petal.width / petal.height;
+        petal.setDisplaySize(PETAL_DISPLAY_SIZE, PETAL_DISPLAY_SIZE / aspect);
+
+        const fallDuration = Phaser.Math.Between(PETAL_FALL_MIN_DURATION, PETAL_FALL_MAX_DURATION);
+        const endY = height + 20;
+
+        // Falls straight down in world terms — the side-to-side motion is
+        // a separate tween on the same object (below) so the two combine
+        // into a gentle drifting descent rather than a diagonal line.
+        this.tweens.add({
+            targets: petal,
+            y: endY,
+            duration: fallDuration,
+            ease: "Sine.easeIn",
+            onComplete: () => {
+                this.tweens.killTweensOf(petal);
+                petal.destroy();
+            }
+        });
+
+        // Oscillates several times over the course of the fall — its own
+        // duration is much shorter than the fall's, and unrelated to it.
+        const driftRange = Phaser.Math.Between(PETAL_DRIFT_MIN_RANGE, PETAL_DRIFT_MAX_RANGE);
+        const driftSign = Phaser.Math.Between(0, 1) === 0 ? 1 : -1;
+
+        this.tweens.add({
+            targets: petal,
+            x: startX + (driftRange * driftSign),
+            duration: Phaser.Math.Between(PETAL_DRIFT_MIN_DURATION, PETAL_DRIFT_MAX_DURATION),
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut"
+        });
+
+        // A full 0->360 sweep that snaps back to restart each repeat reads
+        // as continuous rotation (360 degrees is visually identical to 0),
+        // rather than a visible reset.
+        const rotateSign = Phaser.Math.Between(0, 1) === 0 ? 1 : -1;
+
+        this.tweens.add({
+            targets: petal,
+            angle: 360 * rotateSign,
+            duration: Phaser.Math.Between(PETAL_ROTATE_MIN_DURATION, PETAL_ROTATE_MAX_DURATION),
+            repeat: -1,
+            ease: "Linear"
+        });
+
+        // Fades out over the final stretch of the fall so it's gone (or
+        // nearly gone) by the time it reaches endY, instead of vanishing
+        // abruptly right as the fall tween's onComplete destroys it.
+        this.tweens.add({
+            targets: petal,
+            alpha: 0,
+            duration: fallDuration * PETAL_FADE_FRACTION,
+            delay: fallDuration * (1 - PETAL_FADE_FRACTION),
+            ease: "Sine.easeIn"
         });
 
     }

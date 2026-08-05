@@ -22,6 +22,7 @@ export default class BootScene extends Phaser.Scene {
         // -------------------------------------------------
 
         this.load.image("ui-panel", "assets/ui/panel.png");
+        this.load.image("dialogue-panel", "assets/ui/dialogue-panel.png");
 
         // titlebar.png is still an empty placeholder — Panel.js falls back
         // to a flat title bar when this texture isn't loaded. Add the load
@@ -47,6 +48,21 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("fountain4", "assets/decor/fountain/fountain4.png");
 
         this.load.image("torii-gate", "assets/decor/torii.png");
+
+        this.load.image("bench", "assets/decor/bench.png");
+        this.load.image("flowerbox", "assets/decor/flowerbox.png");
+        this.load.image("signpost", "assets/decor/signpost.png");
+        this.load.image("lamppost", "assets/decor/lamppost.png");
+
+        // -------------------------------------------------
+        // Ambient wildlife (birds, butterflies)
+        // -------------------------------------------------
+
+        this.load.image("bird1", "assets/ambient/bird1.png");
+        this.load.image("bird2", "assets/ambient/bird2.png");
+        this.load.image("butterfly1", "assets/ambient/butterfly1.png");
+        this.load.image("butterfly2", "assets/ambient/butterfly2.png");
+        this.load.image("petal", "assets/ambient/petal.png");
 
         // -------------------------------------------------
         // Ground tiles
@@ -80,6 +96,13 @@ export default class BootScene extends Phaser.Scene {
         // -------------------------------------------------
 
         this.load.image("overlook-bg", "assets/scenes/overlook.png");
+        this.load.image("library-room", "assets/scenes/library-room.png");
+        this.load.image("library-bookshelf-closeup", "assets/scenes/library-bookshelf-closeup.png");
+        this.load.image("library-librarian-closeup", "assets/scenes/library-librarian-closeup.png");
+        this.load.image("cafe-room", "assets/scenes/cafe-room.png");
+        this.load.image("workshop-room", "assets/scenes/workshop-room.png");
+        this.load.image("gallery-room", "assets/scenes/gallery-room.png");
+        this.load.image("theatre-room", "assets/scenes/theatre-room.png");
 
     }
 
@@ -97,6 +120,18 @@ export default class BootScene extends Phaser.Scene {
             const panelTexture = this.textures.get("ui-panel");
             if (!panelTexture.has("content")) {
                 panelTexture.add("content", 0, 410, 187, 714, 658);
+            }
+        }
+
+        // dialogue-panel.png (AdventureBar.js's point-and-click prompt
+        // panel) is another 1536x1024 export with the same dead-padding
+        // problem — real content (the ornate frame) only lives in the
+        // (55,170)-(1480,663) sub-rect (measured via PIL alpha bbox). Same
+        // technique as ui-panel above.
+        if (this.textures.exists("dialogue-panel")) {
+            const dialoguePanelTexture = this.textures.get("dialogue-panel");
+            if (!dialoguePanelTexture.has("content")) {
+                dialoguePanelTexture.add("content", 0, 55, 170, 1425, 493);
             }
         }
 
@@ -131,6 +166,71 @@ export default class BootScene extends Phaser.Scene {
             tree4: [32, 21, 34, 58]
         };
         Object.entries(TREE_CROPS).forEach(([key, [x, y, w, h]]) => {
+            if (this.textures.exists(key)) {
+                const tex = this.textures.get(key);
+                if (!tex.has("content")) {
+                    tex.add("content", 0, x, y, w, h);
+                }
+            }
+        });
+
+        // Building art is a set of portrait/landscape illustrations, each
+        // with a soft-edged transparent margin around the actual building
+        // (measured via PIL alpha bbox) — most noticeably at the BOTTOM of
+        // the canvas (Theatre: 450px/29%, Library: 343px/22% of their
+        // native height; the other three are a much smaller 4-9%). Anchor
+        // origin is bottom-center, so that margin was being anchored as if
+        // it were part of the building — the real facade sat that many
+        // pixels above the footprint/path, reading as "floating" above
+        // where it should meet the ground. Same named-sub-frame technique
+        // as ui-panel/torii-gate/trees above.
+        const BUILDING_CROPS = {
+            "gallery-building": [0, 42, 1024, 1431],
+            "theatre-building": [47, 125, 917, 961],
+            "cafe-building": [112, 77, 1355, 860],
+            "library-building": [28, 257, 969, 936],
+            "workshop-building": [281, 37, 973, 893]
+        };
+        Object.entries(BUILDING_CROPS).forEach(([key, [x, y, w, h]]) => {
+            if (this.textures.exists(key)) {
+                const tex = this.textures.get(key);
+                if (!tex.has("content")) {
+                    tex.add("content", 0, x, y, w, h);
+                }
+            }
+        });
+
+        // Small plaza/street furniture — same soft-vignette illustration
+        // style as the buildings, same transparent-margin problem (measured
+        // via PIL alpha bbox), same fix.
+        const DECOR_CROPS = {
+            bench: [457, 328, 718, 291],
+            flowerbox: [464, 372, 728, 214],
+            signpost: [506, 118, 538, 729],
+            lamppost: [581, 58, 407, 866]
+        };
+        Object.entries(DECOR_CROPS).forEach(([key, [x, y, w, h]]) => {
+            if (this.textures.exists(key)) {
+                const tex = this.textures.get(key);
+                if (!tex.has("content")) {
+                    tex.add("content", 0, x, y, w, h);
+                }
+            }
+        });
+
+        // Ambient wildlife/effects (birds, butterflies, falling petals) —
+        // same 1536x1024 soft-vignette export style as everything else
+        // above, same fix (measured via PIL alpha bbox). Without this,
+        // setDisplaySize() would scale the whole padded canvas down to its
+        // target size, making the actual art a tiny speck in the middle.
+        const AMBIENT_CROPS = {
+            bird1: [537, 305, 441, 282],
+            bird2: [537, 328, 439, 268],
+            butterfly1: [681, 370, 237, 183],
+            butterfly2: [655, 358, 243, 194],
+            petal: [723, 424, 120, 98]
+        };
+        Object.entries(AMBIENT_CROPS).forEach(([key, [x, y, w, h]]) => {
             if (this.textures.exists(key)) {
                 const tex = this.textures.get(key);
                 if (!tex.has("content")) {
