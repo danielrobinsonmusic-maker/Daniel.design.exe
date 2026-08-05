@@ -39,6 +39,29 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("theatre-building", "assets/buildings/theatre.png");
 
         // -------------------------------------------------
+        // Player
+        // -------------------------------------------------
+
+        // Idle poses: one static illustration per direction, same soft-
+        // vignette export style as buildings/trees/decor (see the
+        // "content" sub-frame crops below).
+        this.load.image("player-idle-down", "assets/player/idle-down.png");
+        this.load.image("player-idle-up", "assets/player/idle-up.png");
+        this.load.image("player-idle-left", "assets/player/idle-left.png");
+        this.load.image("player-idle-right", "assets/player/idle-right.png");
+
+        // Walk cycles: each file is a uniform 6x6 grid (36 frames) of that
+        // direction's stride, loaded as a spritesheet so Phaser auto-slices
+        // it into frames 0-35 — frameWidth/frameHeight is just the file's
+        // own pixel dimensions divided by 6 (confirmed to divide evenly).
+        // Player.js's animations only use a spaced-out subset of the 36
+        // (see BUILD_PLAYER_ANIMATIONS below) rather than all of them.
+        this.load.spritesheet("player-walk-down", "assets/player/walk-down.png", { frameWidth: 2394 / 6, frameHeight: 4872 / 6 });
+        this.load.spritesheet("player-walk-up", "assets/player/walk-up.png", { frameWidth: 2190 / 6, frameHeight: 4872 / 6 });
+        this.load.spritesheet("player-walk-left", "assets/player/walk-left.png", { frameWidth: 2382 / 6, frameHeight: 4866 / 6 });
+        this.load.spritesheet("player-walk-right", "assets/player/walk-right.png", { frameWidth: 2412 / 6, frameHeight: 4890 / 6 });
+
+        // -------------------------------------------------
         // Decor
         // -------------------------------------------------
 
@@ -63,6 +86,12 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("butterfly1", "assets/ambient/butterfly1.png");
         this.load.image("butterfly2", "assets/ambient/butterfly2.png");
         this.load.image("petal", "assets/ambient/petal.png");
+
+        // Not animated/roaming like the above — a single static hand-placed
+        // decoration next to the torii gate (see WorldObjects.js's
+        // createGateCat). Lives in the same folder since it's the same
+        // "ambient life around town" category of asset.
+        this.load.image("cat", "assets/ambient/cat.png");
 
         // -------------------------------------------------
         // Ground tiles
@@ -90,6 +119,8 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("tree2", "assets/nature/tree2.png");
         this.load.image("tree3", "assets/nature/tree3.png");
         this.load.image("tree4", "assets/nature/tree4.png");
+        this.load.image("bush1", "assets/nature/bush1.png");
+        this.load.image("bush2", "assets/nature/bush2.png");
 
         // -------------------------------------------------
         // Scenes (standalone backgrounds, not tile-based)
@@ -100,6 +131,7 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("library-bookshelf-closeup", "assets/scenes/library-bookshelf-closeup.png");
         this.load.image("library-librarian-closeup", "assets/scenes/library-librarian-closeup.png");
         this.load.image("cafe-room", "assets/scenes/cafe-room.png");
+        this.load.image("cafe-barista-closeup", "assets/scenes/cafe-room-closeup.png");
         this.load.image("workshop-room", "assets/scenes/workshop-room.png");
         this.load.image("gallery-room", "assets/scenes/gallery-room.png");
         this.load.image("theatre-room", "assets/scenes/theatre-room.png");
@@ -174,6 +206,24 @@ export default class BootScene extends Phaser.Scene {
             }
         });
 
+        // bush1/bush2.png are each a 128x128 canvas with the actual bush
+        // clump occupying only the middle third or so (measured via PIL
+        // alpha bbox) — same "content" sub-frame technique as the trees
+        // above, so bottom-anchoring lands on the bush's real base instead
+        // of the padded canvas edge.
+        const BUSH_CROPS = {
+            bush1: [40, 46, 49, 45],
+            bush2: [33, 51, 62, 40]
+        };
+        Object.entries(BUSH_CROPS).forEach(([key, [x, y, w, h]]) => {
+            if (this.textures.exists(key)) {
+                const tex = this.textures.get(key);
+                if (!tex.has("content")) {
+                    tex.add("content", 0, x, y, w, h);
+                }
+            }
+        });
+
         // Building art is a set of portrait/landscape illustrations, each
         // with a soft-edged transparent margin around the actual building
         // (measured via PIL alpha bbox) — most noticeably at the BOTTOM of
@@ -218,6 +268,28 @@ export default class BootScene extends Phaser.Scene {
             }
         });
 
+        // Player idle poses — same soft-vignette illustration style as
+        // buildings/decor (measured via PIL alpha bbox), same fix. The walk
+        // spritesheets don't need this: each of their 36 grid cells already
+        // has the character's feet within a few px of the cell's bottom
+        // edge (confirmed by measuring several sampled frames), unlike
+        // these single-image idle poses which have real padding on every
+        // side.
+        const PLAYER_IDLE_CROPS = {
+            "player-idle-down": [219, 66, 575, 1304],
+            "player-idle-up": [246, 75, 529, 1282],
+            "player-idle-left": [313, 48, 486, 1375],
+            "player-idle-right": [273, 63, 454, 1289]
+        };
+        Object.entries(PLAYER_IDLE_CROPS).forEach(([key, [x, y, w, h]]) => {
+            if (this.textures.exists(key)) {
+                const tex = this.textures.get(key);
+                if (!tex.has("content")) {
+                    tex.add("content", 0, x, y, w, h);
+                }
+            }
+        });
+
         // Ambient wildlife/effects (birds, butterflies, falling petals) —
         // same 1536x1024 soft-vignette export style as everything else
         // above, same fix (measured via PIL alpha bbox). Without this,
@@ -228,7 +300,8 @@ export default class BootScene extends Phaser.Scene {
             bird2: [537, 328, 439, 268],
             butterfly1: [681, 370, 237, 183],
             butterfly2: [655, 358, 243, 194],
-            petal: [723, 424, 120, 98]
+            petal: [723, 424, 120, 98],
+            cat: [550, 384, 270, 387]
         };
         Object.entries(AMBIENT_CROPS).forEach(([key, [x, y, w, h]]) => {
             if (this.textures.exists(key)) {
@@ -256,6 +329,46 @@ export default class BootScene extends Phaser.Scene {
                 repeat: -1
             });
         }
+
+        // Player idle + walk animations, one pair per direction. Each
+        // walk-*.png is a uniform 6x6 (36-frame) contact sheet of a single
+        // continuous stride sequence, read left-to-right/top-to-bottom —
+        // frame-to-frame pixel-diffing every direction's sheet (not just
+        // eyeballing a few frames) showed no single short repeating cycle
+        // common to all four sheets (down/up drift gradually across the
+        // full 36; left/right stride on a ~13-14 frame period), so rather
+        // than special-case a different sample per direction, this takes
+        // one evenly-spaced 6-frame subset — every 6th frame — across all
+        // 36, verified (by the same diffing) to have no jarring jump
+        // anywhere in its loop, including the wrap from the last sampled
+        // frame back to the first.
+        const WALK_FRAME_SAMPLE = [0, 6, 12, 18, 24, 30];
+        const DIRECTIONS = ["down", "up", "left", "right"];
+
+        DIRECTIONS.forEach((direction) => {
+
+            const idleKey = `player-idle-${direction}`;
+            const walkKey = `player-walk-${direction}`;
+
+            if (this.textures.exists(idleKey) && !this.anims.exists(idleKey)) {
+                this.anims.create({
+                    key: idleKey,
+                    frames: [{ key: idleKey, frame: "content" }],
+                    frameRate: 1,
+                    repeat: -1
+                });
+            }
+
+            if (this.textures.exists(walkKey) && !this.anims.exists(walkKey)) {
+                this.anims.create({
+                    key: walkKey,
+                    frames: WALK_FRAME_SAMPLE.map((frame) => ({ key: walkKey, frame })),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+        });
 
         this.scene.start("Title");
 

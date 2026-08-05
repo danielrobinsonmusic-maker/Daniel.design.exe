@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import Player from "../entities/Player";
 import TileRenderer from "../world/TileRenderer";
 import WorldObjects, { DECOR } from "../world/WorldObjects";
-import { TREES, createTownSquare, FOUNTAIN_TILE } from "../world/MapData";
+import { TREES, BUSHES, createTownSquare, FOUNTAIN_TILE } from "../world/MapData";
 import { BUILDINGS, NORTH_BUFFER_ROWS } from "../world/Buildings";
 import AmbientWildlife from "../world/AmbientWildlife";
 
@@ -76,6 +76,11 @@ export default class WorldScene extends Phaser.Scene {
 
         // trees: one solid tile per tree (same footprint as before)
         TREES.forEach(([x, y]) => {
+            this.createObstacle(x * TILE_SIZE, y * TILE_SIZE);
+        });
+
+        // scattered bushes: same single-tile-at-the-base collision as trees
+        BUSHES.forEach(([x, y]) => {
             this.createObstacle(x * TILE_SIZE, y * TILE_SIZE);
         });
 

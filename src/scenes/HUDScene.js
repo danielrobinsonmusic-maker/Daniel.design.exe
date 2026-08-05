@@ -109,7 +109,7 @@ export default class HUDScene extends Phaser.Scene {
 
     }
 
-    showInteraction(location, prompt = "Press [E] to Open") {
+    showInteraction(location, prompt = "Press [E] to go inside") {
 
         this.titleText.setText(location);
         this.promptText.setText(prompt);

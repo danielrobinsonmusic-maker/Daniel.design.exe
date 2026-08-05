@@ -276,6 +276,24 @@ function computeStoneTiles() {
     drawPath(stone, shiftY([[37, 31], [46, 30], [54, 28]]), CORRIDOR_OFFSETS, false);
     drawPath(stone, shiftY([[54, 28], [60, 29], [60, 27]]));
 
+    // drawLine's startAxis (see its own comment) picks a thickening axis
+    // for a segment's first point by predicting that segment's own first
+    // step — correct in isolation, but wherever a waypoint is shared by
+    // two segments whose directions actually differ (an interior bend
+    // within one drawPath call, or one drawPath call ending exactly where
+    // another begins, e.g. a wide corridor handing off to its pinched
+    // door spur), each segment thickens that shared point along its own
+    // axis independently, and the two can disagree. The result is one
+    // extra tile flaring 1 off the path's straight edge, touching the
+    // path on only one side — cosmetic only (nothing routes through it),
+    // but it reads as a stray nub. Pruned by hand rather than reworking
+    // the thickening algorithm itself: south-exit spine's [34,35] bend,
+    // and the wide-corridor-to-pinch handoff points for Café, Gallery,
+    // and Workshop ([50,14], [20,28], [54,28] respectively).
+    [
+        [33, 41], [50, 19], [20, 33], [54, 33]
+    ].forEach(([x, y]) => stone.delete(`${x},${y}`));
+
     return { stone, plaza };
 
 }
@@ -455,6 +473,77 @@ export const TREES = [
     ...createForestBorder(MAP_WIDTH, MAP_HEIGHT, 35, 39),
     ...computeScatteredTrees(STONE_TILES)
 ];
+
+// Same idea as computeScatteredTrees above (deterministic grid + jitter,
+// rejecting anything that lands on paved ground, a building, or another
+// tree/bush), but with only a single-tile clearance check instead of a
+// wide canopy rectangle — bush1/bush2 render close to one tile even at
+// their largest scattered size (WorldObjects.js scales them 100-130% of
+// a ~40px baseline, still under 2 tiles), so unlike a tree's 256px
+// canopy there's no risk of a bush visually reaching into a path or
+// building it isn't anchored on. Runs after TREES (above) so it can
+// avoid every tree, not just the hand-placed ones.
+function computeScatteredBushes(stoneTiles) {
+
+    const unsafe = new Set(stoneTiles);
+    const BUILDING_BUFFER = 1;
+
+    BUILDINGS.forEach((building) => {
+
+        const visualHeight = BUILDING_VISUAL_HEIGHT_TILES[building.name] ?? DEFAULT_BUILDING_VISUAL_HEIGHT_TILES;
+        const footprintBottom = building.y + building.height;
+        const visualTop = footprintBottom - visualHeight;
+
+        for (let y = visualTop - BUILDING_BUFFER; y < footprintBottom + BUILDING_BUFFER; y++) {
+            for (let x = building.x - BUILDING_BUFFER; x < building.x + building.width + BUILDING_BUFFER; x++) {
+                unsafe.add(`${x},${y}`);
+            }
+        }
+
+    });
+
+    // Keep the entrance funnel clear, same reasoning as computeScatteredTrees.
+    for (let y = 0; y <= 9 + NORTH_BUFFER_ROWS; y++) {
+        for (let x = 30; x <= 44; x++) {
+            unsafe.add(`${x},${y}`);
+        }
+    }
+
+    TREES.forEach(([x, y]) => unsafe.add(`${x},${y}`));
+
+    const bushes = [];
+    const random = createSeededRandom(2468);
+
+    const SPACING = 4;
+    const EDGE_MARGIN = 3;
+    const PLACE_CHANCE = 0.4;
+
+    for (let gy = EDGE_MARGIN; gy < MAP_HEIGHT - EDGE_MARGIN; gy += SPACING) {
+
+        for (let gx = EDGE_MARGIN; gx < MAP_WIDTH - EDGE_MARGIN; gx += SPACING) {
+
+            if (random() > PLACE_CHANCE) continue;
+
+            const x = Math.min(gx + Math.floor(random() * SPACING), MAP_WIDTH - EDGE_MARGIN - 1);
+            const y = Math.min(gy + Math.floor(random() * SPACING), MAP_HEIGHT - EDGE_MARGIN - 1);
+
+            if (unsafe.has(`${x},${y}`)) continue;
+
+            bushes.push([x, y]);
+            unsafe.add(`${x},${y}`);
+
+        }
+
+    }
+
+    return bushes;
+
+}
+
+// Tile coordinates of every scattered (non-hand-placed) bush — WorldObjects.js
+// renders these the same way it renders TREES, and WorldScene.js gives each
+// one a single-tile obstacle from this same list.
+export const BUSHES = computeScatteredBushes(STONE_TILES);
 
 export function createTownSquare() {
 

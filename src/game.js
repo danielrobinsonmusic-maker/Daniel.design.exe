@@ -13,6 +13,7 @@ import BookTakeoverScene from "./scenes/BookTakeoverScene";
 import GalleryScene from "./scenes/GalleryScene";
 import WorkshopScene from "./scenes/WorkshopScene";
 import CafeScene from "./scenes/CafeScene";
+import BaristaCloseupScene from "./scenes/BaristaCloseupScene";
 import TheatreScene from "./scenes/TheatreScene";
 import OverlookScene from "./scenes/OverlookScene";
 const config = {
@@ -54,11 +55,13 @@ const config = {
         GalleryScene,
         WorkshopScene,
         CafeScene,
+        BaristaCloseupScene,
         TheatreScene,
         OverlookScene
     ]
 };
 
 const game = new Phaser.Game(config);
+window.__game = game;
 
 export default game;

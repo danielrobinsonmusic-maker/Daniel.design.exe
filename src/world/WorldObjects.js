@@ -1,4 +1,4 @@
-import { TREES } from "./MapData";
+import { TREES, BUSHES } from "./MapData";
 import { BUILDINGS, NORTH_BUFFER_ROWS } from "./Buildings";
 
 const TILE_SIZE = 32;
@@ -41,6 +41,22 @@ const TREE_SIZE_STEPS = [1, 0.9, 0.8, 0.7];
 
 function pickTreeSizeScale(tileX, tileY) {
     return TREE_SIZE_STEPS[Math.floor(hashTile(tileX, tileY, 13) * TREE_SIZE_STEPS.length) % TREE_SIZE_STEPS.length];
+}
+
+// Scattered ground-clutter bushes (BUSHES, from MapData.js's open-grass
+// scatter — distinct from the hand-placed hedge-line/corner bush1/bush2
+// entries in DECOR below, which keep their own fixed size). Species pick
+// uses the default salt (0), same as tree species above, and doesn't
+// collide with it in practice since the two scatters never share a tile
+// (computeScatteredBushes explicitly avoids every TREES tile).
+const BUSH_TEXTURES = ["bush1", "bush2"];
+const BUSH_SCATTER_BASE_WIDTH = 40; // matches DECOR_DISPLAY_WIDTH.bush1/bush2 below, i.e. 100% scale
+
+// Own salt (14), continuous rather than stepped like TREE_SIZE_STEPS —
+// the requested range (100-130%) is narrow enough that a few discrete
+// steps would read as repetitive at this smaller size.
+function pickBushSizeScale(tileX, tileY) {
+    return 1 + (hashTile(tileX, tileY, 14) * 0.3);
 }
 
 // Gentle back-and-forth rotation so trees read as swaying rather than
@@ -132,6 +148,38 @@ const TORII_BASE_Y = (NORTH_BUFFER_ROWS + 1) * TILE_SIZE;
 const TORII_DISPLAY_HEIGHT = 64 * TORII_SIZE_MULTIPLIER;
 const TORII_DISPLAY_WIDTH = Math.round(TORII_DISPLAY_HEIGHT * TORII_CROP_WIDTH / TORII_CROP_HEIGHT);
 
+// A single hand-placed cat sitting just past the gate's east post — same
+// ground-contact baseline as the gate itself (TORII_BASE_Y) rather than a
+// tile-grid position, since the gate isn't tile-locked either. Purely
+// decorative (no collision), same as the gate and fountain. Rendered
+// mirrored (flipX) so it faces back toward the gate instead of away from
+// it, sat close to the post rather than out in the open grass.
+const CAT_CROP_WIDTH = 270;
+const CAT_CROP_HEIGHT = 387;
+const CAT_DISPLAY_HEIGHT = 36; // 40 * 0.9 — 10% smaller than the original placement
+const CAT_DISPLAY_WIDTH = Math.round(CAT_DISPLAY_HEIGHT * CAT_CROP_WIDTH / CAT_CROP_HEIGHT);
+const CAT_BASE_X = TORII_BASE_X + (TORII_DISPLAY_WIDTH / 2) + 8;
+const CAT_BASE_Y = TORII_BASE_Y;
+
+// Eye centers/sizes measured directly against cat.png's own "content" crop
+// (PIL: darkest-pixel cluster in the head region, ~36x36px square at each
+// eye out of the 270x387 crop), as fractions of the cropped frame — so the
+// blink overlay below tracks correctly regardless of CAT_DISPLAY_WIDTH/
+// HEIGHT. wFrac/hFrac are the measured pupil size with a ~30% safety
+// margin (an under-measured first pass here left the dark pupil rim
+// visible around a too-small cover rect even at full opacity — verified
+// by screenshotting a forced-closed frame). X fractions are already
+// mirrored (1 - the as-measured value) to match the sprite's flipX above;
+// un-mirrored, the overlay would sit over open cheek fur instead of the
+// eyes.
+const CAT_EYES = [
+    { xFrac: 0.546, yFrac: 0.224, wFrac: 0.173, hFrac: 0.121 },
+    { xFrac: 0.280, yFrac: 0.231, wFrac: 0.173, hFrac: 0.121 }
+];
+const CAT_EYE_COLOR = 0xdd9716; // sampled fur tone right around the eyes, so a "closed" eye reads as eyelid, not a black patch
+const CAT_BLINK_DURATION = 90; // ms for the close half of the blink (yoyo doubles it for close+open)
+const CAT_BLINK_INTERVAL = 4000; // ms between the start of one blink and the next — fixed, not randomized, same "deterministic, not Math.random" convention as addSway's tween timing below
+
 // Workshop-only accents: a lean-to covered work area and a tool crate,
 // so it reads as more utilitarian/weathered than the other buildings
 // even as a flat placeholder.
@@ -148,12 +196,16 @@ const DECOR_ASPECT = {
     bench: 718 / 291,
     flowerbox: 728 / 214,
     signpost: 538 / 729,
-    lamppost: 407 / 866
+    lamppost: 407 / 866,
+    bush1: 49 / 45,
+    bush2: 62 / 40
 };
 
 const DECOR_DISPLAY_WIDTH = {
     bench: 64,
-    flowerbox: 56
+    flowerbox: 56,
+    bush1: 40,
+    bush2: 40
 };
 const DECOR_DISPLAY_HEIGHT = {
     signpost: 64,
@@ -163,15 +215,15 @@ const DECOR_DISPLAY_HEIGHT = {
 // Coordinates below are the original (pre-NORTH_BUFFER_ROWS) map
 // numbers, same convention as MapData.js's TOWN_TREES/waypoints — kept
 // readable against the layout as originally authored, shifted once here.
+// The town square rectangle itself (TOWN_SQUARE_BOUNDS, exported by
+// MapData.js) is col 29-45 / row 19-29 in this same pre-shift numbering.
 //
-// Benches (4): ring the fountain plaza just outside its square2/3 tile
-// radius (FOUNTAIN_TILE (37,24), 5x5 accent patch — see TileRenderer.js),
-// one on each side (west/east/south/north). The north one mirrors the
-// south bench's same 3-tile offset across the fountain — originally left
-// clear because that column is also the entrance corridor's spine, but a
-// single-tile obstacle there is no different from any other decor sitting
-// in the corridor's 3-wide path (which is already true of the south bench,
-// on the same column past the fountain), so it doesn't block the route.
+// Benches (3): sit just inside the square's own north/west/east edges
+// (1 tile in from the boundary — see the plaza-corner note below for why
+// 1 tile) rather than clustered around the fountain, so they read as
+// the plaza's own furniture instead of a huddle in the middle. There
+// used to be a 4th, south of the fountain; removed so the remaining 3
+// don't crowd the fountain from every side.
 //
 // Lampposts (4 original + 4 at the plaza corners, see below): spaced along
 // different path stretches — entrance corridor, south exit, and each of
@@ -205,22 +257,29 @@ const DECOR_DISPLAY_HEIGHT = {
 // the open approach) rather than beside it (which would sit inside the
 // building's footprint width and could look like it's clipping the wall).
 //
-// Plaza corners (4): a flower box + lamppost pair just outside each corner
-// of the town square rectangle (TOWN_SQUARE_BOUNDS), found the same way as
-// the signposts above — nearest actual grass tile to the corner, skipping
-// anything already occupied. The two south corners butt up against the
-// wide Gallery/Workshop junction paving, so their nearest open grass is a
-// couple tiles further out than the north corners' — still the closest
-// available ground, just not perfectly symmetric with NW/NE. Corner
-// lampposts follow the same east-side-gets-mirrored rule as the spur
-// lampposts above, judged against the plaza's own west/east edge instead
-// of a corridor centerline: NE and SE sit east of the plaza and are
-// mirrored; NW and SW sit west of it and stay default.
+// Plaza corners (4): a lamppost + flower box pair 1 tile in from each
+// corner of the town square rectangle (TOWN_SQUARE_BOUNDS) — inside the
+// square, standing on square1/square2 pavement, rather than the previous
+// placement just outside each corner on grass. 1 tile in (not right on
+// the boundary tile) because a lamppost's display width is close to a
+// full tile — centered on the boundary tile itself, its edge would still
+// overhang onto the grass tile beyond it. Corner lampposts follow the
+// same east-side-gets-mirrored rule as the spur lampposts above, judged
+// against the plaza's own west/east edge instead of a corridor
+// centerline: NE and SE sit east of the plaza and are mirrored; NW and
+// SW sit west of it and stay default.
+//
+// Bushes (10 per side): line the square's west and east edges, 1 tile
+// out from the boundary column (28 and 46) so they stand on the grass
+// just outside the plaza rather than on the pavement itself, spanning
+// every row of the square except its southernmost (29) — that row is
+// part of the wide Gallery/Workshop junction paving, not open grass.
+// bush1/bush2 alternate by row for the same "don't read as one texture
+// repeated" reason GRASS_VARIANTS exists in TileRenderer.js.
 const DECOR_RAW = [
-    ["bench", 33, 24],
-    ["bench", 41, 24],
-    ["bench", 37, 27],
-    ["bench", 37, 21],
+    ["bench", 30, 24],
+    ["bench", 44, 24],
+    ["bench", 37, 20],
 
     ["lamppost", 27, 11, true],
     ["lamppost", 31, 35],
@@ -235,17 +294,24 @@ const DECOR_RAW = [
     ["flowerbox", 11, 28],
 
     // Plaza corners: NW, NE, SW, SE — lamppost + flowerbox pair each.
-    ["lamppost", 29, 18],
-    ["flowerbox", 28, 19],
+    ["lamppost", 30, 20],
+    ["flowerbox", 31, 20],
 
-    ["lamppost", 45, 18, true],
-    ["flowerbox", 46, 19],
+    ["lamppost", 44, 20, true],
+    ["flowerbox", 43, 20],
 
-    ["lamppost", 28, 28],
-    ["flowerbox", 27, 28],
+    ["lamppost", 30, 28],
+    ["flowerbox", 31, 28],
 
-    ["lamppost", 46, 28, true],
-    ["flowerbox", 47, 28]
+    ["lamppost", 44, 28, true],
+    ["flowerbox", 43, 28],
+
+    // West/east hedge lines (rows 19-28; row 29 is the south junction
+    // paving, not grass — see comment above).
+    ...[19, 20, 21, 22, 23, 24, 25, 26, 27, 28].flatMap((row) => ([
+        [row % 2 === 0 ? "bush1" : "bush2", 28, row],
+        [row % 2 === 0 ? "bush1" : "bush2", 46, row]
+    ]))
 ];
 
 export const DECOR = DECOR_RAW.map(([type, x, y, mirror]) => ({ type, x, y: y + NORTH_BUFFER_ROWS, mirror: !!mirror }));
@@ -266,12 +332,20 @@ export default class WorldObjects {
             objects.push(this.createTree(x, y));
         });
 
+        BUSHES.forEach(([x, y]) => {
+            const bush = this.createBush(x, y);
+            if (bush) objects.push(bush);
+        });
+
         BUILDINGS.forEach((building) => {
             objects.push(...this.createBuilding(building));
         });
 
         const gate = this.createToriiGate();
         if (gate) objects.push(gate);
+
+        const cat = this.createGateCat();
+        if (cat) objects.push(cat);
 
         DECOR.forEach((item) => {
             const sprite = this.createDecor(item);
@@ -326,6 +400,38 @@ export default class WorldObjects {
 
     }
 
+    // Scattered ground-clutter bush (BUSHES, from MapData.js's open-grass
+    // scatter) — same bottom-anchored single-tile convention as createTree,
+    // sized 100-130% of the hand-placed hedge bushes' baseline width via
+    // pickBushSizeScale. Returns null (silently) if the texture never
+    // loaded, matching createDecor/createToriiGate.
+    createBush(tileX, tileY) {
+
+        const textureKey = BUSH_TEXTURES[
+            Math.floor(hashTile(tileX, tileY) * BUSH_TEXTURES.length) % BUSH_TEXTURES.length
+        ];
+
+        if (!this.scene.textures.exists(textureKey)) {
+            return null;
+        }
+
+        const baseX = (tileX * TILE_SIZE) + (TILE_SIZE / 2);
+        const baseY = (tileY * TILE_SIZE) + TILE_SIZE;
+
+        const texture = this.scene.textures.get(textureKey);
+        const frame = texture.has("content") ? "content" : undefined;
+        const aspect = DECOR_ASPECT[textureKey] ?? 1;
+
+        const sprite = this.scene.add.image(baseX, baseY, textureKey, frame);
+        sprite.setOrigin(0.5, 1);
+
+        const width = BUSH_SCATTER_BASE_WIDTH * pickBushSizeScale(tileX, tileY);
+        sprite.setDisplaySize(width, width / aspect);
+
+        return sprite;
+
+    }
+
     // Marks the entrance to the hidden path: straddles the forest-border
     // gap the same way a tree does — bottom-anchored so it stands on the
     // path rather than floating, purely decorative (no collision, same
@@ -344,6 +450,79 @@ export default class WorldObjects {
         gate.setDisplaySize(TORII_DISPLAY_WIDTH, TORII_DISPLAY_HEIGHT);
 
         return gate;
+
+    }
+
+    // Sits beside the torii gate — see the CAT_* constants above for why
+    // it's positioned off the gate's own baseline rather than a tile.
+    createGateCat() {
+
+        if (!this.scene.textures.exists("cat")) {
+            return null;
+        }
+
+        const catTexture = this.scene.textures.get("cat");
+        const frame = catTexture.has("content") ? "content" : undefined;
+
+        const cat = this.scene.add.image(CAT_BASE_X, CAT_BASE_Y, "cat", frame);
+        cat.setOrigin(0.5, 1);
+        cat.setDisplaySize(CAT_DISPLAY_WIDTH, CAT_DISPLAY_HEIGHT);
+        cat.setFlipX(true);
+
+        this.addCatBlink();
+
+        return cat;
+
+    }
+
+    // Two small eyelid-colored rectangles over the cat's eyes (see CAT_EYES
+    // above for how their position/size were measured), normally
+    // invisible, flashed to full opacity and back on a fixed repeating
+    // timer — a cheap blink with no extra art needed, since a "closed"
+    // eyelid is just fur-colored.
+    //
+    // Positioned from the same origin/display-size math as the cat sprite
+    // itself (CAT_BASE_X/Y ± CAT_DISPLAY_WIDTH/HEIGHT) rather than being a
+    // child of it, because Image doesn't support children — but that means
+    // they're independent GameObjects with their own y, which sits up at
+    // the cat's head (well above CAT_BASE_Y, the feet/anchor point).
+    // WorldScene's per-frame depth=y sorting would place anything with a
+    // smaller y BEHIND the cat's own feet-anchored depth, hiding the
+    // eyelids — so these get setDepth() once, directly, to just above the
+    // cat's resolved depth, and are never added to the objects array that
+    // loop iterates (both the cat and its eyelids are static, so a
+    // one-time depth assignment holds for the scene's whole lifetime).
+    addCatBlink() {
+
+        const left = CAT_BASE_X - (CAT_DISPLAY_WIDTH / 2);
+        const top = CAT_BASE_Y - CAT_DISPLAY_HEIGHT;
+
+        const eyelids = CAT_EYES.map(({ xFrac, yFrac, wFrac, hFrac }) => {
+
+            const eyelid = this.scene.add.rectangle(
+                left + (xFrac * CAT_DISPLAY_WIDTH),
+                top + (yFrac * CAT_DISPLAY_HEIGHT),
+                wFrac * CAT_DISPLAY_WIDTH,
+                hFrac * CAT_DISPLAY_HEIGHT,
+                CAT_EYE_COLOR
+            );
+
+            eyelid.setAlpha(0);
+            eyelid.setDepth(CAT_BASE_Y + 1);
+
+            return eyelid;
+
+        });
+
+        this.scene.tweens.add({
+            targets: eyelids,
+            alpha: 1,
+            duration: CAT_BLINK_DURATION,
+            yoyo: true,
+            repeat: -1,
+            repeatDelay: CAT_BLINK_INTERVAL - (CAT_BLINK_DURATION * 2),
+            ease: "Sine.easeInOut"
+        });
 
     }
 
