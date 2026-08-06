@@ -3,14 +3,18 @@ import AdventureBar from "./AdventureBar";
 import Cursor from "./Cursor";
 
 // Shared foundation for every point-and-click screen in a building's
-// Room -> Close-up -> Takeover chain. A concrete scene (LibraryRoomScene,
-// BookshelfCloseupScene, BookTakeoverScene, and later the same three per
-// building) subclasses this and, in its own create(), calls setBackdrop()
-// once and addHitbox() per interactable region, then sets this.backSceneKey
-// (and optionally this.backSceneData) to whatever ESC should return to.
+// Room -> Close-up -> Takeover chain. A concrete scene (LibraryScene,
+// BookshelfCloseupScene, the shared TakeoverFrameScene, etc.) subclasses
+// this and, in its own buildScene(), calls setBackdrop() once and
+// addHitbox() per interactable region, then sets this.backSceneKey (and
+// optionally this.backSceneData) to whatever ESC should return to.
 // Everything else — the fade transitions, the bottom-bar UI, the hover
 // cursor, hitbox->screen-space math — lives here so it isn't reimplemented
-// per building.
+// per building. The Takeover level specifically is shared across every
+// building via TakeoverFrameScene (see adventure/takeoverFrames.js)
+// rather than each building subclassing its own, since a Takeover is
+// always the same shape: a frame image plus content rendered into a
+// frame-specific content area.
 const FADE_DURATION = 400;
 
 // Generates (and caches, same "only build it once" convention as

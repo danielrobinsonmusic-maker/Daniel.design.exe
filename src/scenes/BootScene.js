@@ -130,11 +130,14 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("library-room", "assets/scenes/library-room.png");
         this.load.image("library-bookshelf-closeup", "assets/scenes/library-bookshelf-closeup.png");
         this.load.image("library-librarian-closeup", "assets/scenes/library-librarian-closeup.png");
+        this.load.image("library-book", "assets/scenes/library-book.png");
         this.load.image("cafe-room", "assets/scenes/cafe-room.png");
         this.load.image("cafe-barista-closeup", "assets/scenes/cafe-room-closeup.png");
         this.load.image("workshop-room", "assets/scenes/workshop-room.png");
         this.load.image("gallery-room", "assets/scenes/gallery-room.png");
         this.load.image("theatre-room", "assets/scenes/theatre-room.png");
+        this.load.image("theatre-attendant-closeup", "assets/scenes/theatre-room-closeup.png");
+        this.load.image("theatre-room-screen", "assets/scenes/theatre-room-screen.png");
 
     }
 

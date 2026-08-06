@@ -9,12 +9,13 @@ import AppScene from "./scenes/AppScene";
 import LibraryScene from "./scenes/LibraryScene";
 import LibrarianCloseupScene from "./scenes/LibrarianCloseupScene";
 import BookshelfCloseupScene from "./scenes/BookshelfCloseupScene";
-import BookTakeoverScene from "./scenes/BookTakeoverScene";
 import GalleryScene from "./scenes/GalleryScene";
 import WorkshopScene from "./scenes/WorkshopScene";
 import CafeScene from "./scenes/CafeScene";
 import BaristaCloseupScene from "./scenes/BaristaCloseupScene";
 import TheatreScene from "./scenes/TheatreScene";
+import TheatreAttendantCloseupScene from "./scenes/TheatreAttendantCloseupScene";
+import TakeoverFrameScene from "./adventure/TakeoverFrameScene";
 import OverlookScene from "./scenes/OverlookScene";
 const config = {
     type: Phaser.AUTO,
@@ -51,17 +52,17 @@ const config = {
         LibraryScene,
         LibrarianCloseupScene,
         BookshelfCloseupScene,
-        BookTakeoverScene,
         GalleryScene,
         WorkshopScene,
         CafeScene,
         BaristaCloseupScene,
         TheatreScene,
+        TheatreAttendantCloseupScene,
+        TakeoverFrameScene,
         OverlookScene
     ]
 };
 
 const game = new Phaser.Game(config);
-window.__game = game;
 
 export default game;

@@ -162,22 +162,24 @@ const CAT_BASE_X = TORII_BASE_X + (TORII_DISPLAY_WIDTH / 2) + 8;
 const CAT_BASE_Y = TORII_BASE_Y;
 
 // Eye centers/sizes measured directly against cat.png's own "content" crop
-// (PIL: darkest-pixel cluster in the head region, ~36x36px square at each
-// eye out of the 270x387 crop), as fractions of the cropped frame — so the
-// blink overlay below tracks correctly regardless of CAT_DISPLAY_WIDTH/
-// HEIGHT. wFrac/hFrac are the measured pupil size with a ~30% safety
-// margin (an under-measured first pass here left the dark pupil rim
-// visible around a too-small cover rect even at full opacity — verified
-// by screenshotting a forced-closed frame). X fractions are already
-// mirrored (1 - the as-measured value) to match the sprite's flipX above;
-// un-mirrored, the overlay would sit over open cheek fur instead of the
-// eyes.
+// (numpy: centroid of near-black pixels within each eye's own bounding
+// box in the head region, out of the 270x387 crop), as fractions of the
+// cropped frame — so the blink overlay below tracks correctly regardless
+// of CAT_DISPLAY_WIDTH/HEIGHT. wFrac/hFrac are the measured pupil size
+// with a ~30% safety margin (an under-measured first pass here left the
+// dark pupil rim visible around a too-small cover rect even at full
+// opacity — verified by screenshotting a forced-closed frame). X
+// fractions are already mirrored (1 - the as-measured value) to match the
+// sprite's flipX above; un-mirrored, the overlay sits over open cheek fur
+// near the ear instead of the eyes (a prior pass here had a mirroring
+// error that did exactly that).
 const CAT_EYES = [
-    { xFrac: 0.546, yFrac: 0.224, wFrac: 0.173, hFrac: 0.121 },
-    { xFrac: 0.280, yFrac: 0.231, wFrac: 0.173, hFrac: 0.121 }
+    { xFrac: 0.441, yFrac: 0.239, wFrac: 0.173, hFrac: 0.121 },
+    { xFrac: 0.221, yFrac: 0.239, wFrac: 0.173, hFrac: 0.121 }
 ];
 const CAT_EYE_COLOR = 0xdd9716; // sampled fur tone right around the eyes, so a "closed" eye reads as eyelid, not a black patch
-const CAT_BLINK_DURATION = 90; // ms for the close half of the blink (yoyo doubles it for close+open)
+const CAT_BLINK_DURATION = 120; // ms for the close half of the blink (yoyo doubles it for close+open)
+const CAT_BLINK_HOLD = 90; // ms the eyes stay fully shut between closing and reopening
 const CAT_BLINK_INTERVAL = 4000; // ms between the start of one blink and the next — fixed, not randomized, same "deterministic, not Math.random" convention as addSway's tween timing below
 
 // Workshop-only accents: a lean-to covered work area and a tool crate,
@@ -518,9 +520,10 @@ export default class WorldObjects {
             targets: eyelids,
             alpha: 1,
             duration: CAT_BLINK_DURATION,
+            hold: CAT_BLINK_HOLD,
             yoyo: true,
             repeat: -1,
-            repeatDelay: CAT_BLINK_INTERVAL - (CAT_BLINK_DURATION * 2),
+            repeatDelay: CAT_BLINK_INTERVAL - ((CAT_BLINK_DURATION * 2) + CAT_BLINK_HOLD),
             ease: "Sine.easeInOut"
         });
 

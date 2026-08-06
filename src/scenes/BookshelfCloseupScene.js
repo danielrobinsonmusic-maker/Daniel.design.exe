@@ -57,7 +57,11 @@ export default class BookshelfCloseupScene extends AdventureScene {
 
         if (!document) return;
 
-        this.fadeTo("BookTakeover", { document, spineLabel: spine.label });
+        this.fadeTo("TakeoverFrame", {
+            frameKey: "library-book",
+            content: document,
+            backSceneKey: "BookshelfCloseup"
+        });
 
     }
 
