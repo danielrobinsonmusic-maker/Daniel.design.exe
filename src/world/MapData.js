@@ -345,17 +345,18 @@ function isCanopyClear(unsafe, tx, ty) {
 
 }
 
-// Adds roughly `pct` more trees on top of whatever's already in `trees`,
-// via a finer grid + its own seed so it can find gaps the coarser
-// primary scatter's canopy-clear check skipped over (see the two call
-// sites in computeScatteredTrees below — each successive bump is layered
-// on the running total, so "another 10%" after an existing "~15%" bump
-// compounds rather than overwriting it). Mutates `trees`/`unsafe` in
-// place and stops once it's added enough for this bump, so it stays
-// additive rather than open-ended.
-function applyDensityBump(trees, unsafe, seed, pct) {
+// Adds roughly `pct` more entries on top of whatever's already in `list`,
+// via a finer grid + its own seed so it can find gaps the coarser primary
+// scatter's own clearance check skipped over. `isClear(unsafe, x, y)` is
+// swappable per caller — trees need a whole-canopy check (isCanopyClear),
+// bushes only need a single-tile one, same as their own primary scatters
+// use. Mutates `list`/`unsafe` in place and stops once it's added enough
+// for this bump, so it stays additive rather than open-ended — safe to
+// call more than once on the same list (see computeScatteredTrees), since
+// each call's pct is relative to the running total at that point.
+function applyDensityBump(list, unsafe, seed, pct, isClear) {
 
-    const target = Math.round(trees.length * pct);
+    const target = Math.round(list.length * pct);
 
     const bumpRandom = createSeededRandom(seed);
     const BUMP_SPACING = 1;
@@ -366,9 +367,9 @@ function applyDensityBump(trees, unsafe, seed, pct) {
         for (let gx = EDGE_MARGIN; gx < MAP_WIDTH - EDGE_MARGIN && added < target; gx += BUMP_SPACING) {
 
             if (bumpRandom() > 0.5) continue;
-            if (!isCanopyClear(unsafe, gx, gy)) continue;
+            if (!isClear(unsafe, gx, gy)) continue;
 
-            trees.push([gx, gy]);
+            list.push([gx, gy]);
             unsafe.add(`${gx},${gy}`);
             added++;
 
@@ -376,6 +377,14 @@ function applyDensityBump(trees, unsafe, seed, pct) {
 
     }
 
+}
+
+// Single-tile clearance check for the bush density bump — matches
+// computeScatteredBushes' own primary scatter (a bush's display size never
+// reaches a full tile even at its largest scattered scale, so unlike a
+// tree's wide canopy there's no need to check neighboring tiles too).
+function isBushSpotClear(unsafe, tx, ty) {
+    return !unsafe.has(`${tx},${ty}`);
 }
 
 // Scatters trees across open grass, keeping clear of: the paths/square,
@@ -446,11 +455,14 @@ function computeScatteredTrees(stoneTiles) {
     // Denser supplemental passes on open grass/flower ground, layered on
     // top of (not reshuffling) the primary scatter above and each other —
     // each call's pct is relative to the running total at that point, so
-    // these compound rather than each being 15%/10% of the original
-    // baseline. Two separate seeds so the two passes don't just retrace
-    // each other's candidates.
-    applyDensityBump(trees, unsafe, 9001, 0.15);
-    applyDensityBump(trees, unsafe, 4021, 0.10);
+    // these compound rather than each being a fixed % of the original
+    // baseline. Distinct seeds so no pass just retraces an earlier one's
+    // candidates. The third (15%) pass is the "15% more trees" bump —
+    // stacked on top of the two pre-existing ones rather than replacing
+    // them.
+    applyDensityBump(trees, unsafe, 9001, 0.15, isCanopyClear);
+    applyDensityBump(trees, unsafe, 4021, 0.10, isCanopyClear);
+    applyDensityBump(trees, unsafe, 7734, 0.15, isCanopyClear);
 
     return trees;
 
@@ -535,6 +547,12 @@ function computeScatteredBushes(stoneTiles) {
         }
 
     }
+
+    // "10% more bushes" — same supplemental-pass technique as the tree
+    // density bumps in computeScatteredTrees above, just with a
+    // single-tile clearance check (isBushSpotClear) instead of a canopy
+    // one, matching this function's own primary scatter.
+    applyDensityBump(bushes, unsafe, 5566, 0.10, isBushSpotClear);
 
     return bushes;
 

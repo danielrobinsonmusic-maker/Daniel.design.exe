@@ -10,11 +10,15 @@ export default class NameScene extends Phaser.Scene {
 
     create() {
 
-        const { width, height } = this.scale;
+        const { width } = this.scale;
 
+        // Shifted up from the original 110/180/280/420 layout to leave
+        // clean room below for the arrow-key diagram (see
+        // createNavigationHint) without anything crowding the canvas'
+        // bottom edge (540px tall).
         this.add.text(
             width / 2,
-            110,
+            70,
             "Welcome!",
             {
                 fontFamily: "monospace",
@@ -25,7 +29,7 @@ export default class NameScene extends Phaser.Scene {
 
         this.add.text(
             width / 2,
-            180,
+            130,
             "What should everyone call you?",
             {
                 fontFamily: "monospace",
@@ -36,7 +40,7 @@ export default class NameScene extends Phaser.Scene {
 
         this.nameText = this.add.text(
             width / 2,
-            280,
+            210,
             "> _",
             {
                 fontFamily: "monospace",
@@ -47,7 +51,7 @@ export default class NameScene extends Phaser.Scene {
 
         this.add.text(
             width / 2,
-            420,
+            280,
             "ENTER = Continue    BACKSPACE = Delete",
             {
                 fontFamily: "monospace",
@@ -56,7 +60,70 @@ export default class NameScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
 
+        this.createNavigationHint(width / 2, 350);
+
         this.input.keyboard.on("keydown", this.handleKey, this);
+    }
+
+    // A small arrow-key "keycap" diagram (the classic inverted-T layout —
+    // Up above, Left/Down/Right in a row beneath it) plus a caption,
+    // previewing the World scene's actual movement controls before the
+    // player ever gets there. Pure Graphics/Text — no new art asset
+    // needed for something this small.
+    createNavigationHint(centerX, captionY) {
+
+        this.add.text(
+            centerX,
+            captionY,
+            "Use the arrow keys to navigate the town",
+            {
+                fontFamily: "monospace",
+                fontSize: "16px",
+                color: "#bbbbbb"
+            }
+        ).setOrigin(0.5);
+
+        const KEY_SIZE = 34;
+        const KEY_GAP = 6;
+        const KEY_RADIUS = 6;
+        const KEY_FILL = 0x2a2a2a;
+        const KEY_STROKE = 0x666666;
+        const ARROW_COLOR = "#66ff99";
+
+        const upY = captionY + 44;
+        const rowY = upY + KEY_SIZE + KEY_GAP;
+
+        const keys = [
+            { x: centerX, y: upY, glyph: "▲" },
+            { x: centerX - (KEY_SIZE + KEY_GAP), y: rowY, glyph: "◀" },
+            { x: centerX, y: rowY, glyph: "▼" },
+            { x: centerX + (KEY_SIZE + KEY_GAP), y: rowY, glyph: "▶" }
+        ];
+
+        const graphics = this.add.graphics();
+        graphics.fillStyle(KEY_FILL, 1);
+        graphics.lineStyle(2, KEY_STROKE, 1);
+
+        keys.forEach(({ x, y }) => {
+
+            const left = x - (KEY_SIZE / 2);
+            const top = y - (KEY_SIZE / 2);
+
+            graphics.fillRoundedRect(left, top, KEY_SIZE, KEY_SIZE, KEY_RADIUS);
+            graphics.strokeRoundedRect(left, top, KEY_SIZE, KEY_SIZE, KEY_RADIUS);
+
+        });
+
+        keys.forEach(({ x, y, glyph }) => {
+
+            this.add.text(x, y, glyph, {
+                fontFamily: "monospace",
+                fontSize: "16px",
+                color: ARROW_COLOR
+            }).setOrigin(0.5);
+
+        });
+
     }
 
     handleKey(event) {
