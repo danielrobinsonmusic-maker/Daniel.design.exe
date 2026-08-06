@@ -4,9 +4,9 @@
 // convention: `cafe.barista.q.<id>`. Structurally identical to
 // data/librarian.js (question/answer pairs consumed one at a time) even
 // though these are order options rather than questions.
-export const BARISTA_GREETING = "What can I get you started today?";
+export const BARISTA_GREETING = "What can I get you started today{{name}}?";
 
-export const BARISTA_EXHAUSTED = "That's Daniel's cat, Edison. You might see him around town.";
+export const BARISTA_EXHAUSTED = "That's Daniel's cat, Edison{{name}}. You might see him around town.";
 
 export const BARISTA_QUESTIONS = [
     {

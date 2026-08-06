@@ -5,9 +5,9 @@
 // data/librarian.js, data/barista.js, and data/attendant.js — this
 // building's dialogue just renders inline on the Room scene instead of a
 // dedicated close-up (see GalleryScene's showDialogue/answerQuestion).
-export const GALLERY_GREETING = "Welcome to the Robinson Gallery. Look around for some of Daniel's visual design work, photography, and artwork.";
+export const GALLERY_GREETING = "Welcome to the Robinson Gallery{{name}}. Look around for some of Daniel's visual design work, photography, and artwork.";
 
-export const GALLERY_EXHAUSTED = "You should definitely visit the Library if you're interested in seeing more of his professional work on display.";
+export const GALLERY_EXHAUSTED = "You should definitely visit the Library{{name,}} if you're interested in seeing more of his professional work on display.";
 
 export const GALLERY_QUESTIONS = [
     {

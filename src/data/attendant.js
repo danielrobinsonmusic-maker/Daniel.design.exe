@@ -10,9 +10,9 @@
 // once one of the first 3 has been answered and .slice(0, 3) reaches far
 // enough into the remaining list to include it — no separate "reserve"
 // state needed, just this fixed order filtered by what's left.
-export const ATTENDANT_GREETING = "Welcome to Daniel's theatre. Let me know if you need a recommendation on what to watch.";
+export const ATTENDANT_GREETING = "Welcome to Daniel's theatre{{name}}. Let me know if you need a recommendation on what to watch.";
 
-export const ATTENDANT_EXHAUSTED = "Check out the Gallery just south of here if you want to see some more of Daniel's creative work.";
+export const ATTENDANT_EXHAUSTED = "Check out the Gallery just south of here{{name,}} if you want to see some more of Daniel's creative work.";
 
 export const ATTENDANT_QUESTIONS = [
     {

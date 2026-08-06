@@ -1,5 +1,5 @@
 import AdventureScene from "../adventure/AdventureScene";
-import SaveManager from "../managers/SaveManager";
+import NPCDialogue from "../adventure/NPCDialogue";
 import ContentType from "../data/contentTypes";
 import { GALLERY_GREETING, GALLERY_QUESTIONS, GALLERY_EXHAUSTED } from "../data/galleryAttendant";
 
@@ -19,13 +19,12 @@ const SLIDESHOW_CONTENT = {
 // answers/fallback) renders inline on this Room scene instead of fading
 // to a dedicated close-up like the Library's LibrarianCloseupScene or
 // Café's BaristaCloseupScene — there's no separate "close-up" backdrop
-// for the attendant, just this same room. Talk re-runs showDialogue()
-// from scratch on every click, so it always reflects whatever's currently
-// left (or the fallback) rather than needing any manual reset — the same
-// "recompute from SaveManager flags" approach those close-up scenes use,
-// just without a scene transition wrapped around it. Registered under the
-// same "Gallery" scene key the old flat-color placeholder used, so
-// WorldScene's BUILDING_SCENES map needs no changes.
+// for the attendant, just this same room. The Talk hitbox calls straight
+// into the shared NPCDialogue controller (see adventure/NPCDialogue.js),
+// same as every other building's Talk NPC, just without a scene
+// transition wrapped around it. Registered under the same "Gallery" scene
+// key the old flat-color placeholder used, so WorldScene's BUILDING_SCENES
+// map needs no changes.
 const IDLE_TEXT = "Use your mouse to explore the Gallery.";
 const NATIVE_WIDTH = 1672;
 const NATIVE_HEIGHT = 941;
@@ -44,11 +43,21 @@ export default class GalleryScene extends AdventureScene {
 
         this.setBackdrop("gallery-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 
+        this.dialogue = new NPCDialogue({
+            scene: this,
+            bar: this.bar,
+            namespace: "gallery.attendant",
+            speakerName: ATTENDANT_NAME,
+            greeting: GALLERY_GREETING,
+            questions: GALLERY_QUESTIONS,
+            exhausted: GALLERY_EXHAUSTED
+        });
+
         this.addHitbox({
             xRange: [0.18, 0.32],
             yRange: [0.20, 0.90],
             verb: "Talk",
-            onClick: () => this.showDialogue()
+            onClick: () => this.dialogue.show()
         });
 
         this.addHitbox({
@@ -70,64 +79,6 @@ export default class GalleryScene extends AdventureScene {
         });
 
         this.bar.setText(IDLE_TEXT);
-
-    }
-
-    // Flag key namespaced by building/NPC/question so this generic
-    // SaveManager flag store can hold every future building's dialogue
-    // progress without collisions.
-    flagKey(questionId) {
-        return `gallery.attendant.q.${questionId}`;
-    }
-
-    remainingQuestions() {
-        return GALLERY_QUESTIONS.filter((q) => !SaveManager.hasFlag(this.flagKey(q.id)));
-    }
-
-    showDialogue() {
-
-        const remaining = this.remainingQuestions();
-
-        // Once every question has ever been answered (any visit, any
-        // session — see SaveManager.hasFlag), Talk shows ONLY the
-        // exhausted line, per the design spec — no greeting.
-        if (!remaining.length) {
-            this.bar.setText(GALLERY_EXHAUSTED, [], ATTENDANT_NAME);
-            return;
-        }
-
-        this.showQuestionMenu(GALLERY_GREETING, remaining);
-
-    }
-
-    showQuestionMenu(introText, remaining) {
-
-        const options = remaining.map((q) => ({
-            label: q.question,
-            onSelect: () => this.answerQuestion(q)
-        }));
-
-        this.bar.setText(introText, options, ATTENDANT_NAME);
-
-    }
-
-    // Persists immediately (this visit or any future one — see
-    // SaveManager.setFlag) so the question is gone from the menu for good,
-    // then shows its answer with whatever's left below it — or, if that
-    // was the last one, the answer followed by the exhausted line, with
-    // no options.
-    answerQuestion(question) {
-
-        SaveManager.setFlag(this.flagKey(question.id));
-
-        const remaining = this.remainingQuestions();
-
-        if (!remaining.length) {
-            this.bar.setText(`${question.answer}\n\n${GALLERY_EXHAUSTED}`, [], ATTENDANT_NAME);
-            return;
-        }
-
-        this.showQuestionMenu(question.answer, remaining);
 
     }
 

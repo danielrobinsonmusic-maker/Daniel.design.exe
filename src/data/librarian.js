@@ -3,10 +3,10 @@
 // from the menu across visits and sessions — see LibraryRoomScene's
 // flag key convention: `library.librarian.q.<id>`.
 export const LIBRARIAN_GREETING =
-    "Welcome to the Daniel.design public library! Our curator, Daniel, is an avid book collector, reader, writer and designer. You can learn more about him on that bookshelf over there, but let me know if you have any questions.";
+    "Welcome to the Daniel.design public library{{name}}! Our curator, Daniel, is an avid book collector, reader, writer and designer. You can learn more about him on that bookshelf over there, but let me know if you have any questions.";
 
 export const LIBRARIAN_EXHAUSTED =
-    "Worth checking out the bookshelf to learn more!";
+    "Worth checking out the bookshelf to learn more{{name}}!";
 
 export const LIBRARIAN_QUESTIONS = [
     {

@@ -47,7 +47,10 @@ export default class BookshelfCloseupScene extends AdventureScene {
 
         });
 
-        this.bar.setText(IDLE_TEXT);
+        // No speaker on this idle/browse prompt, so the "Press ESC to go
+        // back." reminder needs the explicit opt-in — see AdventureBar's
+        // setText escHint option.
+        this.bar.setText(IDLE_TEXT, [], null, { escHint: true });
 
     }
 

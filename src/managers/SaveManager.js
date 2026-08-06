@@ -5,6 +5,13 @@ export default class SaveManager {
         return localStorage.getItem(this.SAVE_KEY) !== null;
     }
 
+    // Captured once in NameScene and otherwise read-only — the one place
+    // every NPC dialogue line pulls the player's name from (see
+    // utils/dialogueText.js's withPlayerName).
+    static getName() {
+        return (this.load() || {}).name || "";
+    }
+
     static load() {
         const data = localStorage.getItem(this.SAVE_KEY);
         return data ? JSON.parse(data) : null;

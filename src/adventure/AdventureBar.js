@@ -45,6 +45,25 @@ const BODY_FONT_FRACTION = 0.06;
 const OPTION_FONT_FRACTION = 0.058;
 const VERB_FONT_FRACTION = 0.145;
 
+// "Press ESC to go back." reminder — appended below the main text,
+// visually secondary (smaller, lighter) so it never competes with the
+// actual line. Shown automatically whenever a speaker is set (every NPC
+// dialogue response, cat reactions included) and opt-in otherwise (see
+// setText's escHint option) for speaker-less idle/browse prompts like
+// BookshelfCloseupScene's.
+const ESC_HINT_TEXT = "Press ESC to go back.";
+const ESC_HINT_FONT_FRACTION = 0.046;
+const ESC_HINT_GAP_FRACTION = 0.022;
+const ESC_HINT_COLOR = "#8a8578";
+
+// Reserved on the right of the upper zone so scroll arrows never overlap
+// wrapped text, whether or not they're currently visible — keeps the text
+// wrap width stable instead of reflowing when arrows appear/disappear.
+const ARROW_GUTTER_FRACTION = 0.06;
+const ARROW_COLOR = 0x6b6558;
+const ARROW_HOVER_COLOR = 0x2a2a2a;
+const SCROLL_STEP_FRACTION = 0.55; // fraction of the zone height scrolled per arrow click
+
 const MAX_OPTIONS = 3;
 const DEPTH = 5000; // above hitboxes/backdrop, below the Cursor
 
@@ -92,6 +111,8 @@ export default class AdventureBar {
         const bodyFontSize = Math.round(this.height * BODY_FONT_FRACTION);
         const optionFontSize = Math.round(this.height * OPTION_FONT_FRACTION);
         const verbFontSize = Math.round(this.height * VERB_FONT_FRACTION);
+        const escHintFontSize = Math.round(this.height * ESC_HINT_FONT_FRACTION);
+        this.escHintGap = this.height * ESC_HINT_GAP_FRACTION;
 
         // Centered in the slot both ways — not just horizontally — so
         // there's visible scene above, below, left, and right of the
@@ -141,8 +162,27 @@ export default class AdventureBar {
             y1: top + (OPTION_ZONE_Y[1] * this.height)
         }));
 
+        const arrowGutter = this.width * ARROW_GUTTER_FRACTION;
         const upperTextX = this.upperZone.x0 + zonePadding;
-        const upperWrapWidth = (this.upperZone.x1 - this.upperZone.x0) - (zonePadding * 2);
+        const upperWrapWidth = (this.upperZone.x1 - this.upperZone.x0) - (zonePadding * 2) - arrowGutter;
+
+        // Content taller than the upper zone scrolls (see scrollBy/
+        // applyScroll below) instead of spilling outside the panel art —
+        // everything that should clip together (speaker name, body text,
+        // ESC hint) lives in this one sub-container so a single mask and
+        // a single y-offset handles all three at once.
+        const maskGraphics = scene.make.graphics({}, false);
+        maskGraphics.fillStyle(0xffffff);
+        maskGraphics.fillRect(
+            x + this.upperZone.x0,
+            y + this.upperZone.y0,
+            (this.upperZone.x1 - this.upperZone.x0),
+            (this.upperZone.y1 - this.upperZone.y0)
+        );
+        this.maskGraphics = maskGraphics;
+        this.textLayer = scene.add.container(0, 0);
+        this.textLayer.setMask(maskGraphics.createGeometryMask());
+        this.container.add(this.textLayer);
 
         // Name tag identifying who's talking (e.g. "Librarian", "Ed the
         // Cat") — separate from, and visually louder than, their actual
@@ -163,7 +203,20 @@ export default class AdventureBar {
             wordWrap: { width: upperWrapWidth }
         });
 
+        // "Press ESC to go back." — visually secondary (smaller, lighter)
+        // reminder appended below whatever's currently showing. See
+        // setText's escHint option for when this appears.
+        this.escHintText = scene.add.text(upperTextX, this.upperZone.y0, ESC_HINT_TEXT, {
+            fontFamily: "monospace",
+            fontSize: `${escHintFontSize}px`,
+            color: ESC_HINT_COLOR,
+            align: "left",
+            wordWrap: { width: upperWrapWidth }
+        }).setVisible(false);
+
         this.speakerBodyGap = speakerBodyGap;
+
+        this.textLayer.add([this.speakerText, this.bodyText, this.escHintText]);
 
         this.verbText = scene.add.text(
             (this.upperZone.x0 + this.upperZone.x1) / 2,
@@ -177,7 +230,16 @@ export default class AdventureBar {
             }
         ).setOrigin(0.5).setVisible(false);
 
-        this.container.add([this.speakerText, this.bodyText, this.verbText]);
+        this.container.add(this.verbText);
+
+        this.scrollOffset = 0;
+        this.scrollMax = 0;
+
+        const arrowX = this.upperZone.x1 - (arrowGutter / 2);
+        const arrowSize = Math.min(arrowGutter, zonePadding * 5) * 0.6;
+
+        this.scrollUpArrow = this.createScrollArrow(arrowX, this.upperZone.y0 + zonePadding, arrowSize, -1);
+        this.scrollDownArrow = this.createScrollArrow(arrowX, this.upperZone.y1 - zonePadding, arrowSize, 1);
 
         // Three fixed, persistent slots (matching the art's three lower
         // panels 1:1) rather than a dynamically-built list — an option
@@ -222,12 +284,16 @@ export default class AdventureBar {
     // Shown whenever nothing is being hovered. `options` (max 3) fill the
     // three fixed slots left-to-right — omit/empty for plain idle text.
     // `speaker` names who's talking (e.g. "Librarian") — omit for idle
-    // prompt text, which isn't anyone's dialogue.
-    setText(text, options = [], speaker = null) {
+    // prompt text, which isn't anyone's dialogue. The ESC hint defaults to
+    // "on whenever there's a speaker" (every NPC/cat line) — pass
+    // `escHint: true` explicitly for a speaker-less idle/browse prompt
+    // that should still carry it (e.g. a Close-up scene's idle text).
+    setText(text, options = [], speaker = null, { escHint = !!speaker } = {}) {
 
         this.baseText = text;
         this.baseOptions = options.slice(0, MAX_OPTIONS);
         this.baseSpeaker = speaker;
+        this.escHint = escHint;
         this.render();
 
     }
@@ -260,6 +326,32 @@ export default class AdventureBar {
         this.bodyText.setPosition(this.bodyText.x, cursorY);
         this.bodyText.setVisible(true);
 
+        cursorY += this.bodyText.height;
+
+        if (this.escHint) {
+
+            cursorY += this.escHintGap;
+            this.escHintText.setPosition(this.escHintText.x, cursorY);
+            this.escHintText.setVisible(true);
+
+            cursorY += this.escHintText.height;
+
+        } else {
+
+            this.escHintText.setVisible(false);
+
+        }
+
+        // Content taller than the zone scrolls (see scrollBy) — reset to
+        // the top on every new setText call rather than preserving
+        // whatever scroll position a previous, unrelated line was at.
+        const zoneHeight = this.upperZone.y1 - this.upperZone.y0;
+        const contentHeight = cursorY - this.upperZone.y0;
+
+        this.scrollMax = Math.max(0, contentHeight - zoneHeight);
+        this.scrollOffset = 0;
+        this.applyScroll();
+
         this.optionTexts.forEach((label, index) => {
 
             const option = this.baseOptions[index];
@@ -284,6 +376,50 @@ export default class AdventureBar {
 
     }
 
+    // Simple triangle scroll button — direction is -1 (up) or 1 (down).
+    // Hidden by default; applyScroll() reveals whichever end still has
+    // room to scroll toward, so arrows only ever show up when there's
+    // actually more content than the zone can display at once.
+    createScrollArrow(x, y, size, direction) {
+
+        const half = size / 2;
+        const points = direction === -1
+            ? [0, -half, -half, half, half, half]
+            : [0, half, -half, -half, half, -half];
+
+        const arrow = this.scene.add.triangle(x, y, ...points, ARROW_COLOR);
+        arrow.setInteractive({ useHandCursor: false });
+        arrow.setVisible(false);
+
+        arrow.on("pointerover", () => arrow.setFillStyle(ARROW_HOVER_COLOR));
+        arrow.on("pointerout", () => arrow.setFillStyle(ARROW_COLOR));
+        arrow.on("pointerdown", () => this.scrollBy(direction));
+
+        this.container.add(arrow);
+
+        return arrow;
+
+    }
+
+    scrollBy(direction) {
+
+        if (this.scrollMax <= 0) return;
+
+        const step = (this.upperZone.y1 - this.upperZone.y0) * SCROLL_STEP_FRACTION;
+
+        this.scrollOffset = Math.min(Math.max(this.scrollOffset + (direction * step), 0), this.scrollMax);
+        this.applyScroll();
+
+    }
+
+    applyScroll() {
+
+        this.textLayer.y = -this.scrollOffset;
+        this.scrollUpArrow.setVisible(this.scrollOffset > 0);
+        this.scrollDownArrow.setVisible(this.scrollOffset < this.scrollMax);
+
+    }
+
     // Hover verb overlay — temporarily swaps the visible text for a short
     // verb label ("Talk", "Browse", ...) without touching the underlying
     // idle/dialogue state, so hideVerb() cleanly restores whatever was
@@ -295,8 +431,9 @@ export default class AdventureBar {
 
         this.verbText.setText(verb);
         this.verbText.setVisible(true);
-        this.speakerText.setVisible(false);
-        this.bodyText.setVisible(false);
+        this.textLayer.setVisible(false);
+        this.scrollUpArrow.setVisible(false);
+        this.scrollDownArrow.setVisible(false);
 
     }
 
@@ -305,8 +442,8 @@ export default class AdventureBar {
         if (this.locked) return;
 
         this.verbText.setVisible(false);
-        this.speakerText.setVisible(!!this.baseSpeaker);
-        this.bodyText.setVisible(true);
+        this.textLayer.setVisible(true);
+        this.applyScroll();
 
     }
 
@@ -322,6 +459,7 @@ export default class AdventureBar {
 
     destroy() {
 
+        this.maskGraphics.destroy();
         this.container.destroy();
 
     }
