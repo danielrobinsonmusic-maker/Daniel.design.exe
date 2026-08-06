@@ -1,4 +1,6 @@
 import AdventureScene from "../adventure/AdventureScene";
+import { recordCatInteraction } from "../managers/CatAchievement";
+import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 
 // Room level for the Café — backdrop + Talk/Pet hitboxes, following the
 // Library Room's reference pattern (backdrop + rectangular hitboxes +
@@ -47,6 +49,10 @@ export default class CafeScene extends AdventureScene {
     petCat() {
 
         this.bar.setText("...\n\nEd the Cat seems distracted...", [], CAT_NAME);
+
+        if (recordCatInteraction("cafe")) {
+            showCatAchievementPopup(this);
+        }
 
         this.time.delayedCall(2500, () => {
             this.bar.setText(IDLE_TEXT);

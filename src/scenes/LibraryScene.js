@@ -1,4 +1,6 @@
 import AdventureScene from "../adventure/AdventureScene";
+import { recordCatInteraction } from "../managers/CatAchievement";
+import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 
 // Reference implementation of the Room level for the point-and-click
 // adventure system (see AdventureScene.js) — the pattern this establishes
@@ -61,6 +63,10 @@ export default class LibraryScene extends AdventureScene {
     petCat() {
 
         this.bar.setText("Purrrr...", [], CAT_NAME);
+
+        if (recordCatInteraction("library")) {
+            showCatAchievementPopup(this);
+        }
 
         this.time.delayedCall(2500, () => {
             this.bar.setText(IDLE_TEXT);

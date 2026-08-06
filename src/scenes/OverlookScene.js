@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { NORTH_BUFFER_ROWS } from "../world/Buildings";
+import { isCatAchievementComplete } from "../managers/CatAchievement";
 
 // Background art is 1536x1024 — "contain" fit against the 960x540 canvas
 // is height-constrained (540/1024 < 960/1536), so it always fills the
@@ -69,7 +70,13 @@ export default class OverlookScene extends Phaser.Scene {
 
         const { width, height } = this.scale;
 
-        const bg = this.add.image(width / 2, height / 2, "overlook-bg");
+        // The hidden five-building cat achievement (see
+        // managers/CatAchievement.js) swaps in the "with Edison" version
+        // of this backdrop once complete — everything else about this
+        // scene (ambient effects, prompts, fade transitions) stays the
+        // same regardless of which one is active.
+        const bgKey = isCatAchievementComplete() ? "overlook-bg-achieved" : "overlook-bg";
+        const bg = this.add.image(width / 2, height / 2, bgKey);
         const scale = Math.min(width / BG_NATIVE_WIDTH, height / BG_NATIVE_HEIGHT);
         bg.setScale(scale);
 

@@ -2,6 +2,8 @@ import AdventureScene from "../adventure/AdventureScene";
 import NPCDialogue from "../adventure/NPCDialogue";
 import ContentType from "../data/contentTypes";
 import { GALLERY_GREETING, GALLERY_QUESTIONS, GALLERY_EXHAUSTED } from "../data/galleryAttendant";
+import { recordCatInteraction } from "../managers/CatAchievement";
+import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 
 // Only one item (no per-visit variation like the books/movies/workshop
 // content have), so it's a plain constant here rather than its own data
@@ -89,6 +91,10 @@ export default class GalleryScene extends AdventureScene {
     petCat() {
 
         this.bar.setText("Purrr...\n\nHe seems to remember you.", [], CAT_NAME);
+
+        if (recordCatInteraction("gallery")) {
+            showCatAchievementPopup(this);
+        }
 
         this.time.delayedCall(2500, () => {
             this.bar.setText(IDLE_TEXT);

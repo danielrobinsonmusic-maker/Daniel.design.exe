@@ -1,5 +1,7 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { MOVIES } from "../data/movies";
+import { recordCatInteraction } from "../managers/CatAchievement";
+import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 
 // Room level for the Theatre — backdrop + Talk/Pet/Watch Movie hitboxes,
 // following the Library Room's reference pattern (backdrop + rectangular
@@ -81,6 +83,10 @@ export default class TheatreScene extends AdventureScene {
     petCat() {
 
         this.bar.setText("Swipe! Hisss...\n\nI think Ed is occupied...", [], CAT_NAME);
+
+        if (recordCatInteraction("theatre")) {
+            showCatAchievementPopup(this);
+        }
 
         this.time.delayedCall(2500, () => {
             this.bar.setText(IDLE_TEXT);

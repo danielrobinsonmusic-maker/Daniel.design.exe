@@ -5,6 +5,9 @@ import WorldObjects, { DECOR } from "../world/WorldObjects";
 import { TREES, BUSHES, createTownSquare, FOUNTAIN_TILE } from "../world/MapData";
 import { BUILDINGS, NORTH_BUFFER_ROWS } from "../world/Buildings";
 import AmbientWildlife from "../world/AmbientWildlife";
+import { isCatAchievementComplete } from "../managers/CatAchievement";
+import SaveManager from "../managers/SaveManager";
+import { withPlayerName } from "../utils/dialogueText";
 
 // Maps an interaction zone's display name to the scene it leads into.
 // Names with no entry here fall through to the console.log placeholder —
@@ -16,6 +19,16 @@ const BUILDING_SCENES = {
     "Café": "Cafe",
     "Theatre": "Theatre"
 };
+
+// Edison sits just east of the torii gate (see WorldObjects.js's
+// createGateCat — same CAT_BASE_X/Y math, converted to tile coordinates:
+// CAT_BASE_X 1348.5 / TILE_SIZE 32 = tile 42, same row as the gate/Woods
+// zone). He's always rendered (see WorldObjects.js), but only interactive
+// once the hidden five-building cat achievement is complete — see
+// updateInteractions below, which only adds this zone when that's true.
+const EDISON_ZONE = { x: 42, y: 1 + NORTH_BUFFER_ROWS, name: "Edison" };
+const EDISON_LINE_DURATION = 4000;
+const EDISON_LINE = "Hi{{name}}. Let's meet in the Japanese garden beyond the gate.";
 
 export default class WorldScene extends Phaser.Scene {
     constructor() {
@@ -142,10 +155,27 @@ export default class WorldScene extends Phaser.Scene {
             { x: 37, y: 1 + NORTH_BUFFER_ROWS, name: "Woods" }
         ];
 
+        // Edison's zone only gets added once the achievement is already
+        // complete — checked fresh every time this scene is (re)created,
+        // e.g. right after the fifth cat interaction's building fades back
+        // out to World. Before that, the sprite renders (WorldObjects.js)
+        // but simply has no zone to trigger on, so no prompt ever appears
+        // near it — no per-frame gating needed elsewhere.
+        if (isCatAchievementComplete()) {
+            this.interactionZones.push(EDISON_ZONE);
+        }
+
         // "Woods" is the only zone that isn't a building: it walks the
         // player through a 3-stage prompt instead of a single "Press E to
         // Open" — see updateWoodsInteraction below.
         this.woodsState = "initial"; // "initial" -> "thinking" -> "ready"
+
+        // Edison: false until E is pressed once in range, then shows the
+        // line instead of the "Press E to talk" prompt for a beat — same
+        // "flavor line that reverts after a delay" convention every
+        // building's own petCat() uses, just driven by proximity here
+        // instead of a click.
+        this.edisonLineActive = false;
 
         // Background-only birds/butterflies — no collision, no player
         // interaction. Torn down on shutdown since create() re-runs every
@@ -220,6 +250,11 @@ updateInteractions() {
         return;
     }
 
+    if (target.name === "Edison") {
+        this.updateEdisonInteraction(hud);
+        return;
+    }
+
     hud.showInteraction(target.name);
 
     if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
@@ -281,6 +316,34 @@ updateWoodsInteraction(hud) {
             }
 
         }
+
+    }
+
+}
+
+// Simple two-state version of the pattern above: an idle "Press [E]"
+// prompt, and — once pressed — the line itself for EDISON_LINE_DURATION
+// before reverting, regardless of whether the player is still standing
+// there (same "shows, then reverts after a beat" convention as every
+// building's own petCat(), just proximity-driven instead of a click).
+updateEdisonInteraction(hud) {
+
+    if (this.edisonLineActive) {
+
+        hud.showInteraction("Edison", withPlayerName(EDISON_LINE, SaveManager.getName()));
+        return;
+
+    }
+
+    hud.showInteraction("Edison", "Press [E] to talk to Edison.");
+
+    if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+
+        this.edisonLineActive = true;
+
+        this.time.delayedCall(EDISON_LINE_DURATION, () => {
+            this.edisonLineActive = false;
+        });
 
     }
 

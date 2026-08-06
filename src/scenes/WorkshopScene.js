@@ -1,5 +1,7 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { WORKSHOP_CONTENT } from "../data/workshopContent";
+import { recordCatInteraction } from "../managers/CatAchievement";
+import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 
 // Room level for the Workshop — backdrop + Look/Listen/Pet hitboxes,
 // following the Library Room's reference pattern (backdrop + rectangular
@@ -78,6 +80,10 @@ export default class WorkshopScene extends AdventureScene {
     petCat() {
 
         this.bar.setText("Much much much...\n\nHe's busy eating...", [], CAT_NAME);
+
+        if (recordCatInteraction("workshop")) {
+            showCatAchievementPopup(this);
+        }
 
         this.time.delayedCall(2500, () => {
             this.bar.setText(IDLE_TEXT);

@@ -23,6 +23,7 @@ export default class BootScene extends Phaser.Scene {
 
         this.load.image("ui-panel", "assets/ui/panel.png");
         this.load.image("dialogue-panel", "assets/ui/dialogue-panel.png");
+        this.load.image("cat-achievement", "assets/ui/cat-achievement.png");
 
         // titlebar.png is still an empty placeholder — Panel.js falls back
         // to a flat title bar when this texture isn't loaded. Add the load
@@ -126,7 +127,13 @@ export default class BootScene extends Phaser.Scene {
         // Scenes (standalone backgrounds, not tile-based)
         // -------------------------------------------------
 
-        this.load.image("overlook-bg", "assets/scenes/overlook.png");
+        // Two variants — which one OverlookScene actually displays depends
+        // on the hidden five-building cat achievement (see
+        // managers/CatAchievement.js): overlook1.png (no cat) is the
+        // default, overlook.png (with the cat) only shows once all five
+        // flags are set.
+        this.load.image("overlook-bg", "assets/scenes/overlook1.png");
+        this.load.image("overlook-bg-achieved", "assets/scenes/overlook.png");
         this.load.image("library-room", "assets/scenes/library-room.png");
         this.load.image("library-bookshelf-closeup", "assets/scenes/library-bookshelf-closeup.png");
         this.load.image("library-librarian-closeup", "assets/scenes/library-librarian-closeup.png");
@@ -167,6 +174,20 @@ export default class BootScene extends Phaser.Scene {
             const dialoguePanelTexture = this.textures.get("dialogue-panel");
             if (!dialoguePanelTexture.has("content")) {
                 dialoguePanelTexture.add("content", 0, 55, 170, 1425, 493);
+            }
+        }
+
+        // cat-achievement.png (CatAchievementPopup.js's hidden-achievement
+        // toast) is another 1536x1024 export with the same dead-padding
+        // problem — the real banner only lives in the (168,349)-(1400,623)
+        // sub-rect (measured via PIL alpha bbox; alpha>10 and alpha>200
+        // bboxes came back near-identical, so the art has no soft glow
+        // bleeding past the banner's own edge worth preserving). Same
+        // technique as dialogue-panel above.
+        if (this.textures.exists("cat-achievement")) {
+            const catAchievementTexture = this.textures.get("cat-achievement");
+            if (!catAchievementTexture.has("content")) {
+                catAchievementTexture.add("content", 0, 168, 349, 1232, 274);
             }
         }
 

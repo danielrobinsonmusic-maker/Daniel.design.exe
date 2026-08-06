@@ -346,8 +346,16 @@ export default class WorldObjects {
         const gate = this.createToriiGate();
         if (gate) objects.push(gate);
 
-        const cat = this.createGateCat();
-        if (cat) objects.push(cat);
+        // Not pushed into objects (unlike the gate/trees/buildings above) —
+        // it's static, so it doesn't need the per-frame object.y depth
+        // reset updateDepthSorting() applies to everything in that array.
+        // createGateCat() instead sets a fixed depth once directly, same
+        // convention as its own eyelids (see addCatBlink) — CAT_BASE_Y
+        // alone ties exactly with a buffer-band tree that happens to sit
+        // at the same row just east of the gate's cleared gap, and on
+        // that tie the tree was winning the draw order, hiding the cat
+        // behind its foliage entirely.
+        this.createGateCat();
 
         DECOR.forEach((item) => {
             const sprite = this.createDecor(item);
@@ -470,6 +478,7 @@ export default class WorldObjects {
         cat.setOrigin(0.5, 1);
         cat.setDisplaySize(CAT_DISPLAY_WIDTH, CAT_DISPLAY_HEIGHT);
         cat.setFlipX(true);
+        cat.setDepth(CAT_BASE_Y + 0.5);
 
         this.addCatBlink();
 
