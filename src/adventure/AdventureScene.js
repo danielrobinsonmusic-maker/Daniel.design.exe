@@ -76,7 +76,18 @@ export default class AdventureScene extends Phaser.Scene {
 
         this.sceneData = data;
         this.backSceneKey = null;
-        this.backSceneData = undefined;
+
+        // WorldScene forwards the door tile's own pixel position as
+        // returnSpawnX/Y whenever it starts a building scene (see its
+        // updateInteractions) — carrying it straight through as the World
+        // spawn point means ESC drops the player back in front of
+        // whichever building they just left instead of the map's default
+        // south-edge spawn. Undefined for any scene not reached that way
+        // (Close-ups, TakeoverFrame), which WorldScene.create() already
+        // handles gracefully by falling back to its own default spawn.
+        this.backSceneData = (data.returnSpawnX !== undefined && data.returnSpawnY !== undefined)
+            ? { spawnX: data.returnSpawnX, spawnY: data.returnSpawnY }
+            : undefined;
 
     }
 

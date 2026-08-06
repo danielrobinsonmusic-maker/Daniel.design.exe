@@ -79,7 +79,7 @@ export default class WorkshopScene extends AdventureScene {
     // else in town — same pattern as the other buildings' petCat().
     petCat() {
 
-        this.bar.setText("Much much much...\n\nHe's busy eating...", [], CAT_NAME);
+        this.bar.setText("Munch munch munch...\n\nHe's busy eating...", [], CAT_NAME);
 
         if (recordCatInteraction("workshop")) {
             showCatAchievementPopup(this);

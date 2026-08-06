@@ -262,8 +262,19 @@ updateInteractions() {
         const sceneKey = BUILDING_SCENES[target.name];
 
         if (sceneKey) {
+
             hud.hideInteraction();
-            this.scene.start(sceneKey);
+
+            // The interaction zone's own tile IS the door tile the player
+            // was just standing on — forwarded through so ESC from inside
+            // (see AdventureScene.init's returnSpawnX/Y handling) spawns
+            // back in front of this same building instead of the map's
+            // default south-edge spawn.
+            this.scene.start(sceneKey, {
+                returnSpawnX: (target.x * TILE_SIZE) + 16,
+                returnSpawnY: (target.y * TILE_SIZE) + 16
+            });
+
         } else {
             console.log("Entering", target.name, "(coming soon)");
         }

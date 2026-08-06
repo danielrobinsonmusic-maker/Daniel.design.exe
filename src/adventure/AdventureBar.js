@@ -303,8 +303,16 @@ export default class AdventureBar {
         // New content is authoritative — force the display back to body
         // text even if a verb overlay happened to be showing from a hover
         // that was still active at the moment this got called (e.g.
-        // clicking a hitbox without moving the mouse off it first).
+        // clicking a hitbox without moving the mouse off it first — the
+        // norm for petCat(), since petting requires hovering the cat).
+        // showVerb() hides the whole textLayer (not just speaker/body
+        // individually, now that it also holds the ESC hint) to show the
+        // verb overlay in its place, so restoring it here is required, not
+        // just hiding verbText — without this, content set while a verb
+        // overlay is up stays invisible until the pointer happens to leave
+        // the zone and hideVerb() runs.
         this.verbText.setVisible(false);
+        this.textLayer.setVisible(true);
 
         let cursorY = this.upperZone.y0;
 
