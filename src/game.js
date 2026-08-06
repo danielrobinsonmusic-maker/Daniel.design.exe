@@ -64,6 +64,5 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-window.__game = game;
 
 export default game;

@@ -84,7 +84,14 @@ export default class AdventureScene extends Phaser.Scene {
 
         this.cameras.main.fadeIn(FADE_DURATION, 0, 0, 0);
 
-        this.bar = new AdventureBar(this);
+        // TakeoverFrameScene is the one subclass that overrides usesBar()
+        // to skip this — its content-viewer screens have no dialogue/idle
+        // prompt to show, just a small ESC hint of their own (see that
+        // class), so the full dialogue-panel.png UI would be pure clutter.
+        if (this.usesBar()) {
+            this.bar = new AdventureBar(this);
+        }
+
         this.cursor = new Cursor(this);
         this.hitboxes = [];
 
@@ -105,6 +112,12 @@ export default class AdventureScene extends Phaser.Scene {
 
     // Override in subclasses.
     buildScene() {}
+
+    // Override to return false for a scene that shouldn't get the shared
+    // dialogue-panel.png bottom bar at all (see TakeoverFrameScene).
+    usesBar() {
+        return true;
+    }
 
     // Optional override: return true to consume ESC (e.g. close an open
     // dialogue menu) instead of the default "go back a level" behavior.
@@ -188,13 +201,13 @@ export default class AdventureScene extends Phaser.Scene {
 
         zone.on("pointerover", () => {
             this.cursor.setHover(true);
-            this.bar.showVerb(verb);
+            if (this.bar) this.bar.showVerb(verb);
             glow.show();
         });
 
         zone.on("pointerout", () => {
             this.cursor.setHover(false);
-            this.bar.hideVerb();
+            if (this.bar) this.bar.hideVerb();
             glow.hide();
         });
 

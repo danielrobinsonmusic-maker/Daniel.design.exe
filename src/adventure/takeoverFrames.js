@@ -11,11 +11,6 @@
 // AdventureBar's UPPER_ZONE), so they stay correct however big the
 // backdrop ends up rendering at.
 //
-// barVerb feeds TakeoverFrameScene's bottom-bar text ("<barVerb>:
-// <content.title>") — kept per-frame rather than per-content-item since
-// it describes the TYPE of interaction (reading a book vs. watching a
-// movie), which tracks the frame, not the individual thing being shown.
-//
 // Frames with a `generate` function have no real art yet — TakeoverFrameScene
 // builds their texture from it on demand (via createPlaceholderTexture,
 // which no-ops if that key's canvas already exists — same "only build it
@@ -63,8 +58,7 @@ export const TAKEOVER_FRAMES = {
         textureKey: "library-book",
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
-        contentArea: { xRange: [0.20, 0.80], yRange: [0.11, 0.86] },
-        barVerb: "Reading"
+        contentArea: { xRange: [0.20, 0.80], yRange: [0.11, 0.86] }
     },
 
     // Theatre movie posters (all four) — real art already existed
@@ -79,8 +73,7 @@ export const TAKEOVER_FRAMES = {
         textureKey: "theatre-room-screen",
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
-        contentArea: { xRange: [0.17, 0.83], yRange: [0.145, 0.70] },
-        barVerb: "Watching"
+        contentArea: { xRange: [0.17, 0.83], yRange: [0.145, 0.70] }
     },
 
     // Workshop's blueprints/computer/guitar hitboxes — one shared frame
@@ -93,21 +86,16 @@ export const TAKEOVER_FRAMES = {
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
         contentArea: PLACEHOLDER_CONTENT_AREA,
-        generate: drawPlaceholderFrame,
-        barVerb: "Viewing"
+        generate: drawPlaceholderFrame
     },
 
-    // Gallery's stained-glass window — verb matches the Room hitbox's own
-    // "Admire" verb rather than the generic "Viewing" the other
-    // placeholders use, since there's exactly one of these (no per-item
-    // title varying what's being admired).
+    // Gallery's stained-glass window.
     "gallery-slideshow": {
         textureKey: "takeover-frame-gallery-slideshow",
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
         contentArea: PLACEHOLDER_CONTENT_AREA,
-        generate: drawPlaceholderFrame,
-        barVerb: "Admiring"
+        generate: drawPlaceholderFrame
     }
 
 };

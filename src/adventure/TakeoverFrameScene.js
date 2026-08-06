@@ -2,6 +2,20 @@ import AdventureScene, { createPlaceholderTexture } from "./AdventureScene";
 import ContentType from "../data/contentTypes";
 import { TAKEOVER_FRAMES } from "./takeoverFrames";
 
+// No dialogue-panel.png bar on these screens (see usesBar() below) — just
+// this small, secondary-styled reminder centered at the very bottom,
+// matching AdventureBar's own ESC-hint styling so it reads as part of the
+// same visual language even without the panel around it.
+const ESC_HINT_TEXT = "Press ESC to go back.";
+const ESC_HINT_FONT_SIZE = 14;
+const ESC_HINT_COLOR = "#9a958a";
+const ESC_HINT_BOTTOM_MARGIN = 18;
+
+// Reserves room at the bottom of the screen for the ESC hint above, so
+// the PDF button (the one piece of interactive content with a fixed
+// position of its own) never sits on top of it.
+const BUTTON_BOTTOM_MARGIN = 56;
+
 // The one full-screen "content display" level every building's Room/
 // Close-up scenes fade into — replaces what used to be a separate
 // one-off Takeover scene per building (BookTakeoverScene, MovieTakeoverScene,
@@ -24,6 +38,13 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     constructor() {
         super("TakeoverFrame");
+    }
+
+    // No idle prompt, no dialogue, no hover-verb menu on a content viewer
+    // — the dialogue-panel.png bar would just be dead chrome here. See the
+    // ESC hint text added directly in buildScene() instead.
+    usesBar() {
+        return false;
     }
 
     init(data = {}) {
@@ -76,9 +97,19 @@ export default class TakeoverFrameScene extends AdventureScene {
         }
 
         this.renderContent(frame);
+        this.addEscHint();
 
-        const label = this.content.title ? `: ${this.content.title}` : "";
-        this.bar.setText(`${frame.barVerb}${label}`);
+    }
+
+    addEscHint() {
+
+        const { width, height } = this.scale;
+
+        this.add.text(width / 2, height - ESC_HINT_BOTTOM_MARGIN, ESC_HINT_TEXT, {
+            fontFamily: "monospace",
+            fontSize: `${ESC_HINT_FONT_SIZE}px`,
+            color: ESC_HINT_COLOR
+        }).setOrigin(0.5, 1).setDepth(5000);
 
     }
 
@@ -153,10 +184,10 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     // A clickable "Open" hitbox for the PDF button, same hover-verb/cursor
     // language as every other interactable region in this system, rather
-    // than a one-off styled button. Anchored against the AdventureBar's
-    // own top edge (this.bar.top) rather than a guessed fraction of the
-    // backdrop, since the panel's height follows the real art's aspect
-    // ratio (see AdventureBar.js).
+    // than a one-off styled button. Anchored against the screen's own
+    // bottom edge (there's no bar on this scene — see usesBar() — so
+    // BUTTON_BOTTOM_MARGIN reserves the room the ESC hint text below it
+    // needs instead of measuring against a panel that isn't there).
     renderPdfButton() {
 
         const bodyTop = this.contentBounds.top + (this.content.title ? 70 : 0);
@@ -171,10 +202,9 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         const buttonWidth = 220;
         const buttonHeight = 48;
-        const marginAboveBar = 16;
 
         const bx = this.contentBounds.centerX;
-        const by = this.bar.top - marginAboveBar - (buttonHeight / 2);
+        const by = this.scale.height - BUTTON_BOTTOM_MARGIN - (buttonHeight / 2);
 
         const button = this.add.rectangle(bx, by, buttonWidth, buttonHeight, 0x3f5f9f);
         button.setStrokeStyle(2, 0x2a3f6b);

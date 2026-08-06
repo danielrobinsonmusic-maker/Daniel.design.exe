@@ -60,8 +60,8 @@ const ESC_HINT_COLOR = "#8a8578";
 // wrapped text, whether or not they're currently visible — keeps the text
 // wrap width stable instead of reflowing when arrows appear/disappear.
 const ARROW_GUTTER_FRACTION = 0.06;
-const ARROW_COLOR = 0x6b6558;
-const ARROW_HOVER_COLOR = 0x2a2a2a;
+const ARROW_COLOR = 0xffffff;
+const ARROW_HOVER_COLOR = 0x000000;
 const SCROLL_STEP_FRACTION = 0.55; // fraction of the zone height scrolled per arrow click
 
 const MAX_OPTIONS = 3;
@@ -382,10 +382,18 @@ export default class AdventureBar {
     // actually more content than the zone can display at once.
     createScrollArrow(x, y, size, direction) {
 
-        const half = size / 2;
+        // Points deliberately span [0, size] on both axes rather than
+        // being pre-centered on (0,0) — Phaser's Shape origin/hit-area
+        // math (and getBounds()) assumes the raw point coordinates start
+        // at the shape's own top-left, then centers via displayOrigin.
+        // Pre-centered points (e.g. [-half, half]) render a full half-size
+        // up-left of where that math puts the hit area, which is exactly
+        // the "tap target isn't centered on the arrow" bug this fixes —
+        // confirmed by comparing rendered pixel bounds against
+        // getBounds() before/after this change.
         const points = direction === -1
-            ? [0, -half, -half, half, half, half]
-            : [0, half, -half, -half, half, -half];
+            ? [size / 2, 0, 0, size, size, size]
+            : [size / 2, size, 0, 0, size, 0];
 
         const arrow = this.scene.add.triangle(x, y, ...points, ARROW_COLOR);
         arrow.setInteractive({ useHandCursor: false });
