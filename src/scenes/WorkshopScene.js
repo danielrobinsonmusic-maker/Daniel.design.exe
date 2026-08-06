@@ -7,14 +7,25 @@ import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 // following the Library Room's reference pattern (backdrop + rectangular
 // hitboxes + bottom bar + fade transitions — see LibraryScene.js). No NPC
 // dialogue in this room — every interaction besides the cat opens the
-// shared TakeoverFrameScene (see adventure/TakeoverFrameScene.js) with the
-// "workshop-viewer" frame. Registered under the same "Workshop" scene key
-// the old flat-color placeholder used, so WorldScene's BUILDING_SCENES map
-// needs no changes.
+// shared TakeoverFrameScene (see adventure/TakeoverFrameScene.js), each
+// with its own frame now that all three have real art (see
+// FRAME_KEY_BY_CONTENT_ID — blueprints/computer/guitar each look
+// different, unlike the single shared placeholder frame they used before).
+// Registered under the same "Workshop" scene key the old flat-color
+// placeholder used, so WorldScene's BUILDING_SCENES map needs no changes.
 const IDLE_TEXT = "Use your mouse to explore the Workshop.";
 const NATIVE_WIDTH = 1672;
 const NATIVE_HEIGHT = 940;
 const CAT_NAME = "Ed the Cat";
+
+// Keyed by WORKSHOP_CONTENT's own id (see data/workshopContent.js) —
+// "guitar" maps to the "workshop-music" frame (a CD jewel case) since
+// that's the art the guitar/amp hitbox got, not because the id changed.
+const FRAME_KEY_BY_CONTENT_ID = {
+    blueprints: "workshop-blueprints",
+    computer: "workshop-computer",
+    guitar: "workshop-music"
+};
 
 export default class WorkshopScene extends AdventureScene {
 
@@ -67,7 +78,7 @@ export default class WorkshopScene extends AdventureScene {
         if (!content) return;
 
         this.fadeTo("TakeoverFrame", {
-            frameKey: "workshop-viewer",
+            frameKey: FRAME_KEY_BY_CONTENT_ID[contentId],
             content,
             backSceneKey: "Workshop"
         });

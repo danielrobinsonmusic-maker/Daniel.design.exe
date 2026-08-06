@@ -146,6 +146,15 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("theatre-attendant-closeup", "assets/scenes/theatre-room-closeup.png");
         this.load.image("theatre-room-screen", "assets/scenes/theatre-room-screen.png");
 
+        // TakeoverFrameScene frame art (see adventure/takeoverFrames.js) —
+        // same full-bleed, no-padding convention as the room backdrops
+        // above (confirmed via PIL: none of these four have an alpha
+        // channel), so no "content" sub-frame crop needed.
+        this.load.image("gallery-frame", "assets/scenes/gallery-frame.png");
+        this.load.image("music-player", "assets/scenes/music-player.png");
+        this.load.image("workshop-blueprint", "assets/scenes/workshop-blueprint.png");
+        this.load.image("computer-screen", "assets/scenes/computer-screen.png");
+
     }
 
     create() {

@@ -20,31 +20,6 @@
 const NATIVE_WIDTH = 1672;
 const NATIVE_HEIGHT = 941;
 
-// Shared by every placeholder (no real frame art yet) entry below — same
-// dark-surround + lighter inset "content window" look every one-off
-// Takeover scene in this project used before this system existed. Kept as
-// one function so all placeholder frames render identically without
-// duplicating the drawing code per frame, but each still gets its own
-// texture key (see PLACEHOLDER_INSET-derived contentArea) so any one of
-// them can be swapped for real art later without touching the others.
-const PLACEHOLDER_INSET_X = 220;
-const PLACEHOLDER_INSET_Y = 120;
-
-function drawPlaceholderFrame(g, w, h) {
-
-    g.fillStyle(0x1c1c1c, 1);
-    g.fillRect(0, 0, w, h);
-
-    g.fillStyle(0xe8e4da, 1);
-    g.fillRect(PLACEHOLDER_INSET_X, PLACEHOLDER_INSET_Y, w - (PLACEHOLDER_INSET_X * 2), h - (PLACEHOLDER_INSET_Y * 2));
-
-}
-
-const PLACEHOLDER_CONTENT_AREA = {
-    xRange: [PLACEHOLDER_INSET_X / NATIVE_WIDTH, 1 - (PLACEHOLDER_INSET_X / NATIVE_WIDTH)],
-    yRange: [PLACEHOLDER_INSET_Y / NATIVE_HEIGHT, 1 - (PLACEHOLDER_INSET_Y / NATIVE_HEIGHT)]
-};
-
 export const TAKEOVER_FRAMES = {
 
     // Library books (all four) — real art: an open book with two blank
@@ -76,26 +51,46 @@ export const TAKEOVER_FRAMES = {
         contentArea: { xRange: [0.17, 0.83], yRange: [0.145, 0.70] }
     },
 
-    // Workshop's blueprints/computer/guitar hitboxes — one shared frame
-    // for all three (per the design spec, "could be one shared frame or
-    // per-type" — going with shared since none of the three have real art
-    // yet either, and there's nothing to differentiate them visually
-    // until they do).
-    "workshop-viewer": {
-        textureKey: "takeover-frame-workshop-viewer",
+    // Workshop's three "look/listen" hitboxes each now have their own real
+    // frame art (a blank drafting-table sheet, a monitor, and a CD jewel
+    // case) rather than sharing one generic placeholder — contentArea per
+    // frame is the blank/screen area measured via a color-based flood fill
+    // from a seed point inside it (PIL + scipy.ndimage.label: plain
+    // brightness thresholds picked up unrelated bright pixels elsewhere in
+    // each illustration — CD-case highlights, wood-grain glare — so this
+    // isolates just the one connected blank region), inset slightly for
+    // margin.
+    "workshop-blueprints": {
+        textureKey: "workshop-blueprint",
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
-        contentArea: PLACEHOLDER_CONTENT_AREA,
-        generate: drawPlaceholderFrame
+        contentArea: { xRange: [0.12, 0.90], yRange: [0.09, 0.90] }
     },
 
-    // Gallery's stained-glass window.
-    "gallery-slideshow": {
-        textureKey: "takeover-frame-gallery-slideshow",
+    "workshop-computer": {
+        textureKey: "computer-screen",
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
-        contentArea: PLACEHOLDER_CONTENT_AREA,
-        generate: drawPlaceholderFrame
+        contentArea: { xRange: [0.07, 0.93], yRange: [0.10, 0.74] }
+    },
+
+    // The guitar/amp hitbox's frame — a CD jewel case's blank cover slot,
+    // off-center within the wider Discman illustration, hence the
+    // considerably narrower contentArea than the other frames.
+    "workshop-music": {
+        textureKey: "music-player",
+        nativeWidth: NATIVE_WIDTH,
+        nativeHeight: NATIVE_HEIGHT,
+        contentArea: { xRange: [0.56, 0.82], yRange: [0.23, 0.75] }
+    },
+
+    // Gallery's window/frame — same measurement approach as the Workshop
+    // frames above.
+    "gallery-slideshow": {
+        textureKey: "gallery-frame",
+        nativeWidth: NATIVE_WIDTH,
+        nativeHeight: NATIVE_HEIGHT,
+        contentArea: { xRange: [0.075, 0.925], yRange: [0.13, 0.87] }
     }
 
 };
