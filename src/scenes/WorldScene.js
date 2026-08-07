@@ -121,14 +121,22 @@ export default class WorldScene extends Phaser.Scene {
             }
         });
 
-        // Spawn player at the very bottom of the map, centered on the main
-        // path, by default. The last row is solid forest border with no
-        // gap like the top edge has, so one row north of it is as far
-        // south as it's actually possible to stand. Scenes that send the
-        // player back here from somewhere specific (e.g. the Overlook,
-        // via ESC) can override where they land with { spawnX, spawnY }.
+        // Spawn player centered on the main path near the south end of the
+        // map, by default — far enough north of the solid south forest
+        // border row to clear its trees' own canopies, not just the
+        // camera's south bound. Border trees render up to 256px (8 tiles)
+        // tall from a bottom-center anchor on that row, and — being south
+        // of (i.e. higher depth than) anything spawned too close to them —
+        // draw OVER the player wherever their canopy overlaps his sprite,
+        // even though his own row is clear ground. Row 40 keeps the
+        // player's own y comfortably above every nearby canopy's top edge
+        // (measured empirically via screenshot — row 45, 3 tiles up from
+        // the original spawn, still left the player fully hidden behind
+        // the tallest border tree in this column). Scenes that send the
+        // player back here from somewhere specific (e.g. the Overlook, via
+        // ESC) can override where they land with { spawnX, spawnY }.
         const spawnX = (data && data.spawnX !== undefined) ? data.spawnX : 1200;
-        const spawnY = (data && data.spawnY !== undefined) ? data.spawnY : (48 + NORTH_BUFFER_ROWS) * TILE_SIZE + 16;
+        const spawnY = (data && data.spawnY !== undefined) ? data.spawnY : (40 + NORTH_BUFFER_ROWS) * TILE_SIZE + 16;
 
         this.player = new Player(this, spawnX, spawnY);
 
