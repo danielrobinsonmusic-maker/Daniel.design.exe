@@ -31,6 +31,6 @@ export const WORKSHOP_CONTENT = [
         // player smaller to make room, and wasn't asked for.
         type: ContentType.YOUTUBE_EMBED,
         embedUrl: "https://www.youtube.com/embed/videoseries?list=OLAK5uy_lB9Xvdf9mQARXU45-c6hpZ0_U1_rNSTlI",
-        caption: "Daniel has written, produced, and recorded several full length albums, as well as scored films projects and video games. This is one of his latest albums: The Birds."
-    }
+        caption: "Daniel has written, produced, and recorded several full length albums, as well as scored filmns, projects, and video games. This is one of his latest albums: The Birds."
+ß    }
 ];
