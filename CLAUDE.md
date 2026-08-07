@@ -53,9 +53,13 @@ Building textures were replaced mid-project with a completely different, non-squ
 
 `src/data/library.js` and `src/data/contentTypes.js` back the Library's bookshelf/document-viewer scenes (`LibraryShelfScene.js`, `DocumentViewerScene.js`) — this is the actual portfolio content system (resume, writing samples, etc.), separate from the town-rendering code above.
 
+### Audio
+
+`src/managers/AudioManager.js` plays a looping music + ambient pair per "area" (currently `town` and `overlook`), switching whenever `WorldScene`/`OverlookScene` call `AudioManager.playArea(this, areaKey)` in their own `create()`. Phaser's `SoundManager` is game-global, not per-scene, so tracks keep playing uninterrupted underneath whatever building scene is on top — building scenes don't need any audio code of their own. `playArea()` no-ops when the requested area is already playing, which matters because `WorldScene.create()` re-runs every time the player walks back out of a building (see above) and would otherwise restart the town track from 0 on every visit.
+
 ### Dead/unused files
 
-`src/WorldBuilder.js`, `src/world/Bench.js`, `src/world/ToriiGate.js`, `src/world/DuskBackdrop.js`, `src/managers/AudioManager.js`, `src/managers/InputManager.js`, `src/data/bootMessages.js`, `src/ui/Menu.js`, `src/ui/Terminal.js`, `src/ui/DialogBox.js`, and `src/ui/TypeWriterText.js` are not imported anywhere in the actual scene graph — they're early scaffolding (matching `TODO.md`'s original aspirational folder layout) superseded by the `WorldObjects.js`-based approach that actually ships. Notably, the real bench/torii-gate rendering lives inline in `WorldObjects.js` (`createDecor()` / `createToriiGate()`), not in the similarly-named standalone files. Confirm with a grep for the import before assuming one of these files is load-bearing.
+`src/WorldBuilder.js`, `src/world/Bench.js`, `src/world/ToriiGate.js`, `src/world/DuskBackdrop.js`, `src/managers/InputManager.js`, `src/data/bootMessages.js`, `src/ui/Menu.js`, `src/ui/Terminal.js`, `src/ui/DialogBox.js`, and `src/ui/TypeWriterText.js` are not imported anywhere in the actual scene graph — they're early scaffolding (matching `TODO.md`'s original aspirational folder layout) superseded by the `WorldObjects.js`-based approach that actually ships. Notably, the real bench/torii-gate rendering lives inline in `WorldObjects.js` (`createDecor()` / `createToriiGate()`), not in the similarly-named standalone files. Confirm with a grep for the import before assuming one of these files is load-bearing.
 
 ### Asset files change out from under the code
 

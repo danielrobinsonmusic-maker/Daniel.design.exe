@@ -58,8 +58,9 @@ export default class LibraryScene extends AdventureScene {
 
     // Endpoint interaction — no further scene depth, just a flavor line
     // that reverts to the idle prompt after a beat. (No audio asset for a
-    // purr exists in this project yet — see AudioManager.js's dead-file
-    // note in CLAUDE.md — so this is text-only for now.)
+    // purr exists in this project yet, so this is text-only for now —
+    // see managers/AudioManager.js for the town/overlook background loops
+    // that DO exist.)
     petCat() {
 
         this.bar.setText("Purrrr...", [], CAT_NAME);

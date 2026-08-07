@@ -29,6 +29,15 @@ const config = {
 
     pixelArt: true,
 
+    // Required for Phaser's DOM Element GameObjects (this.add.dom(...)) —
+    // used by TakeoverFrameScene to embed a real YouTube <iframe> for the
+    // Workshop's music-projects viewer. Creates an absolutely-positioned
+    // div over the canvas that Phaser keeps in sync with game coordinates
+    // (including the FIT scale mode's own scaling below).
+    dom: {
+        createContainer: true
+    },
+
     physics: {
         default: "arcade",
         arcade: {

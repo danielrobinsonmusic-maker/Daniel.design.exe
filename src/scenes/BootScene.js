@@ -155,6 +155,15 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("workshop-blueprint", "assets/scenes/workshop-blueprint.png");
         this.load.image("computer-screen", "assets/scenes/computer-screen.png");
 
+        // -------------------------------------------------
+        // Audio (see managers/AudioManager.js)
+        // -------------------------------------------------
+
+        this.load.audio("music-town", "assets/audio/music/Town.mp3");
+        this.load.audio("music-overlook", "assets/audio/music/Overlook.mp3");
+        this.load.audio("ambient-town", "assets/audio/ambient/town-ambient.mp3");
+        this.load.audio("ambient-overlook", "assets/audio/ambient/overlook-ambient.mp3");
+
     }
 
     create() {

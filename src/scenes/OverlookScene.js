@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { NORTH_BUFFER_ROWS } from "../world/Buildings";
 import { isCatAchievementComplete } from "../managers/CatAchievement";
+import AudioManager from "../managers/AudioManager";
 
 // Background art is 1536x1024 — "contain" fit against the 960x540 canvas
 // is height-constrained (540/1024 < 960/1536), so it always fills the
@@ -69,6 +70,8 @@ export default class OverlookScene extends Phaser.Scene {
     create() {
 
         const { width, height } = this.scale;
+
+        AudioManager.playArea(this, "overlook");
 
         // The hidden five-building cat achievement (see
         // managers/CatAchievement.js) swaps in the "with Edison" version

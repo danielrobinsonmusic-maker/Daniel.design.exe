@@ -76,12 +76,18 @@ export const TAKEOVER_FRAMES = {
 
     // The guitar/amp hitbox's frame — a CD jewel case's blank cover slot,
     // off-center within the wider Discman illustration, hence the
-    // considerably narrower contentArea than the other frames.
+    // considerably narrower contentArea than the other frames. Full raw
+    // flood-fill bounds (same PIL + scipy.ndimage.label technique as the
+    // other Workshop frames — x 54.07%-83.01%, y 21.04%-76.73%), not
+    // inset further for text margin like the others: this area now holds
+    // a YouTube embed anchored to its own top edge (see
+    // TakeoverFrameScene.renderYouTubeEmbed), which wants the full
+    // measured width, not a padded-down one.
     "workshop-music": {
         textureKey: "music-player",
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
-        contentArea: { xRange: [0.56, 0.82], yRange: [0.23, 0.75] }
+        contentArea: { xRange: [0.5407, 0.8301], yRange: [0.2104, 0.7673] }
     },
 
     // Gallery's window/frame — same measurement approach as the Workshop

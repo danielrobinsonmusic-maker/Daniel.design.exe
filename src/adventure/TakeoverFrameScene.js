@@ -16,6 +16,10 @@ const ESC_HINT_BOTTOM_MARGIN = 18;
 // position of its own) never sits on top of it.
 const BUTTON_BOTTOM_MARGIN = 56;
 
+// Gap between a YouTube embed's bottom edge and its caption text below —
+// see renderYouTubeEmbed.
+const YOUTUBE_CAPTION_GAP = 14;
+
 // The one full-screen "content display" level every building's Room/
 // Close-up scenes fade into — replaces what used to be a separate
 // one-off Takeover scene per building (BookTakeoverScene, MovieTakeoverScene,
@@ -135,6 +139,10 @@ export default class TakeoverFrameScene extends AdventureScene {
                 this.renderImage();
                 break;
 
+            case ContentType.YOUTUBE_EMBED:
+                this.renderYouTubeEmbed();
+                break;
+
             default:
                 this.renderText("Content coming soon.");
 
@@ -144,10 +152,12 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     // Body text sits just below the title (or at the content area's own
     // top if there wasn't one) — same relative offset every prior
-    // one-off Takeover scene used.
-    renderText(content) {
+    // one-off Takeover scene used. `top` overrides that default entirely
+    // (see renderYouTubeEmbed, which positions its caption relative to
+    // the embed's own height rather than a fixed title-clearance offset).
+    renderText(content, top) {
 
-        const bodyTop = this.contentBounds.top + (this.content.title ? 70 : 0);
+        const bodyTop = top !== undefined ? top : this.contentBounds.top + (this.content.title ? 70 : 0);
 
         this.add.text(this.contentBounds.centerX, bodyTop, content || "", {
             fontFamily: "monospace",
@@ -179,6 +189,44 @@ export default class TakeoverFrameScene extends AdventureScene {
         const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
 
         image.setDisplaySize(image.width * scale, image.height * scale);
+
+    }
+
+    // A real YouTube <iframe> (video or playlist) embedded via a Phaser
+    // DOM Element (see game.js's dom.createContainer config) — spans the
+    // content area's full measured width, height derived to keep a 16:9
+    // aspect ratio rather than stretching to fill the area's own height,
+    // anchored to the content area's top edge (not vertically centered —
+    // setOrigin(0.5, 0), matching every other content renderer's own
+    // top-anchored layout). The caption sits below it, positioned off the
+    // embed's actual rendered height rather than a fixed offset, since
+    // that height depends on the content area's width.
+    renderYouTubeEmbed() {
+
+        if (!this.content.embedUrl) {
+            this.renderText("Video coming soon.");
+            return;
+        }
+
+        const width = Math.round(this.contentBounds.width);
+        const height = Math.round(width * 9 / 16);
+
+        const iframe = document.createElement("iframe");
+        iframe.width = width;
+        iframe.height = height;
+        iframe.src = this.content.embedUrl;
+        iframe.title = this.content.title || "Music";
+        iframe.frameBorder = "0";
+        iframe.allowFullscreen = true;
+        iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+
+        this.add.dom(this.contentBounds.centerX, this.contentBounds.top, iframe)
+            .setOrigin(0.5, 0)
+            .setDepth(1);
+
+        if (this.content.caption) {
+            this.renderText(this.content.caption, this.contentBounds.top + height + YOUTUBE_CAPTION_GAP);
+        }
 
     }
 

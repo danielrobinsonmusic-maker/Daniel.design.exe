@@ -8,6 +8,7 @@ import AmbientWildlife from "../world/AmbientWildlife";
 import { isCatAchievementComplete } from "../managers/CatAchievement";
 import SaveManager from "../managers/SaveManager";
 import { withPlayerName } from "../utils/dialogueText";
+import AudioManager from "../managers/AudioManager";
 
 // Maps an interaction zone's display name to the scene it leads into.
 // Names with no entry here fall through to the console.log placeholder —
@@ -38,6 +39,12 @@ export default class WorldScene extends Phaser.Scene {
     create(data) {
         const TILE_SIZE = 32;
         this.scene.launch("HUD");
+
+        // No-ops if Town's tracks are already playing (this scene's own
+        // create() re-runs every time the player walks back out of a
+        // building — see AudioManager.js) so re-entering World never
+        // restarts the music.
+        AudioManager.playArea(this, "town");
 
         // generate map data
         this.mapData = createTownSquare();
