@@ -2,6 +2,7 @@ import AdventureScene from "../adventure/AdventureScene";
 import { WORKSHOP_CONTENT } from "../data/workshopContent";
 import { recordCatInteraction } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import AudioManager from "../managers/AudioManager";
 
 // Room level for the Workshop — backdrop + Look/Listen/Pet hitboxes,
 // following the Library Room's reference pattern (backdrop + rectangular
@@ -36,6 +37,8 @@ export default class WorkshopScene extends AdventureScene {
     buildScene() {
 
         this.backSceneKey = "World";
+
+        AudioManager.playBuildingMusic(this, "workshop");
 
         this.setBackdrop("workshop-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 

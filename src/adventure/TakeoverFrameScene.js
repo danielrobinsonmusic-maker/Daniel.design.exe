@@ -1,6 +1,7 @@
 import AdventureScene, { createPlaceholderTexture } from "./AdventureScene";
 import ContentType from "../data/contentTypes";
 import { TAKEOVER_FRAMES } from "./takeoverFrames";
+import AudioManager from "../managers/AudioManager";
 
 // No dialogue-panel.png bar on these screens (see usesBar() below) — just
 // this small, secondary-styled reminder centered at the very bottom,
@@ -65,6 +66,15 @@ export default class TakeoverFrameScene extends AdventureScene {
         const frame = TAKEOVER_FRAMES[this.frameKey];
 
         this.backSceneKey = this.sceneData.backSceneKey;
+
+        // Every viewer (book, movie poster, Workshop viewer, Gallery
+        // window) silences whatever's playing — background music/ambient,
+        // any sfx — for as long as it's open, resuming automatically on
+        // the way back out. Matters most for the music-projects viewer's
+        // YouTube embed specifically, which has its own separate audio
+        // that would otherwise play under the Town/Overlook tracks.
+        AudioManager.pauseAll(this);
+        this.events.once("shutdown", () => AudioManager.resumeAll());
 
         if (frame.generate) {
             createPlaceholderTexture(this, frame.textureKey, frame.nativeWidth, frame.nativeHeight, frame.generate);

@@ -1,6 +1,7 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { recordCatInteraction } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import AudioManager from "../managers/AudioManager";
 
 // Reference implementation of the Room level for the point-and-click
 // adventure system (see AdventureScene.js) — the pattern this establishes
@@ -28,6 +29,8 @@ export default class LibraryScene extends AdventureScene {
     buildScene() {
 
         this.backSceneKey = "World";
+
+        AudioManager.playBuildingMusic(this, "library");
 
         this.setBackdrop("library-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 

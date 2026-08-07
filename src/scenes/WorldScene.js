@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import Player from "../entities/Player";
 import TileRenderer from "../world/TileRenderer";
 import WorldObjects, { DECOR } from "../world/WorldObjects";
-import { TREES, BUSHES, createTownSquare, FOUNTAIN_TILE } from "../world/MapData";
+import { TREES, BUSHES, createTownSquare, FOUNTAIN_TILE, TOWN_SQUARE_BOUNDS } from "../world/MapData";
 import { BUILDINGS, NORTH_BUFFER_ROWS } from "../world/Buildings";
 import AmbientWildlife from "../world/AmbientWildlife";
 import { isCatAchievementComplete } from "../managers/CatAchievement";
@@ -31,6 +31,14 @@ const EDISON_ZONE = { x: 42, y: 1 + NORTH_BUFFER_ROWS, name: "Edison" };
 const EDISON_LINE_DURATION = 4000;
 const EDISON_LINE = "Hi{{name}}. Let's meet in the Japanese garden beyond the gate.";
 
+// Fountain ambience — only while the player's own tile is within the town
+// square rectangle (TOWN_SQUARE_BOUNDS covers the whole plaza the
+// fountain sits at the center of, not just the fountain's own tile), so
+// it fades in/out as the player crosses the plaza's edge rather than
+// needing a separate, narrower zone of its own.
+const FOUNTAIN_SFX_KEY = "sfx-fountain";
+const FOUNTAIN_SFX_VOLUME = 0.5;
+
 export default class WorldScene extends Phaser.Scene {
     constructor() {
         super("World");
@@ -43,8 +51,12 @@ export default class WorldScene extends Phaser.Scene {
         // No-ops if Town's tracks are already playing (this scene's own
         // create() re-runs every time the player walks back out of a
         // building — see AudioManager.js) so re-entering World never
-        // restarts the music.
+        // restarts the music. stopBuildingMusic() is what actually
+        // resumes Town's own music layer after a building visit — playArea
+        // alone won't, since "town" never stopped being the current area
+        // the whole time the player was inside a building.
         AudioManager.playArea(this, "town");
+        AudioManager.stopBuildingMusic();
 
         // generate map data
         this.mapData = createTownSquare();
@@ -198,6 +210,13 @@ export default class WorldScene extends Phaser.Scene {
         // second, independent set of spawn timers on top of the last one.
         this.wildlife = new AmbientWildlife(this);
         this.events.once("shutdown", () => this.wildlife.destroy());
+
+        // Stops the fountain loop immediately on any scene exit (entering
+        // a building, leaving for the Overlook) rather than leaving it to
+        // the next update() — this scene's own update() stops running the
+        // instant shutdown fires, so it's the only place that can catch
+        // "player was in the zone right as they left."
+        this.events.once("shutdown", () => AudioManager.setLoopActive(this, FOUNTAIN_SFX_KEY, FOUNTAIN_SFX_VOLUME, false));
     }
 
     createObstacle(x, y) {
@@ -211,6 +230,8 @@ export default class WorldScene extends Phaser.Scene {
     this.player.update();
 
     this.updateInteractions();
+
+    this.updateFountainAudio();
 
     this.updateDepthSorting();
 
@@ -227,6 +248,23 @@ updateDepthSorting() {
     this.worldObjects.forEach((object) => {
         object.setDepth(object.y);
     });
+
+}
+// setLoopActive() itself is idempotent (no-ops if the requested state
+// already matches), so this can just recompute "am I in the square" fresh
+// every frame with no local playing/not-playing state of its own to track.
+updateFountainAudio() {
+
+    const TILE_SIZE = 32;
+
+    const playerTileX = Math.floor(this.player.x / TILE_SIZE);
+    const playerTileY = Math.floor(this.player.y / TILE_SIZE);
+
+    const inSquare =
+        playerTileX >= TOWN_SQUARE_BOUNDS.minCol && playerTileX <= TOWN_SQUARE_BOUNDS.maxCol &&
+        playerTileY >= TOWN_SQUARE_BOUNDS.minRow && playerTileY <= TOWN_SQUARE_BOUNDS.maxRow;
+
+    AudioManager.setLoopActive(this, FOUNTAIN_SFX_KEY, FOUNTAIN_SFX_VOLUME, inSquare);
 
 }
 updateInteractions() {

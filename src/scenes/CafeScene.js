@@ -1,6 +1,7 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { recordCatInteraction } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import AudioManager from "../managers/AudioManager";
 
 // Room level for the Café — backdrop + Talk/Pet hitboxes, following the
 // Library Room's reference pattern (backdrop + rectangular hitboxes +
@@ -21,6 +22,8 @@ export default class CafeScene extends AdventureScene {
     buildScene() {
 
         this.backSceneKey = "World";
+
+        AudioManager.playBuildingMusic(this, "cafe");
 
         this.setBackdrop("cafe-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 

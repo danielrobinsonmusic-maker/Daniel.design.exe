@@ -163,6 +163,16 @@ export default class BootScene extends Phaser.Scene {
         this.load.audio("music-overlook", "assets/audio/music/Overlook.mp3");
         this.load.audio("ambient-town", "assets/audio/ambient/town-ambient.mp3");
         this.load.audio("ambient-overlook", "assets/audio/ambient/overlook-ambient.mp3");
+        this.load.audio("ambient-overlook2", "assets/audio/ambient/overlook-ambient2.mp3");
+        this.load.audio("sfx-fountain", "assets/audio/sfx/fountain.mp3");
+
+        // Per-building music — each Room scene swaps this in over Town's
+        // own music layer on entry (see AudioManager.playBuildingMusic).
+        this.load.audio("music-library", "assets/audio/music/library.mp3");
+        this.load.audio("music-cafe", "assets/audio/music/cafe.mp3");
+        this.load.audio("music-workshop", "assets/audio/music/workshop.m4a");
+        this.load.audio("music-theatre", "assets/audio/music/theatre.mp3");
+        this.load.audio("music-gallery", "assets/audio/music/gallery.mp3");
 
     }
 

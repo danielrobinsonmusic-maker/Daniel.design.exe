@@ -4,6 +4,7 @@ import ContentType from "../data/contentTypes";
 import { GALLERY_GREETING, GALLERY_QUESTIONS, GALLERY_EXHAUSTED } from "../data/galleryAttendant";
 import { recordCatInteraction } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import AudioManager from "../managers/AudioManager";
 
 // Only one item (no per-visit variation like the books/movies/workshop
 // content have), so it's a plain constant here rather than its own data
@@ -42,6 +43,8 @@ export default class GalleryScene extends AdventureScene {
     buildScene() {
 
         this.backSceneKey = "World";
+
+        AudioManager.playBuildingMusic(this, "gallery");
 
         this.setBackdrop("gallery-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 

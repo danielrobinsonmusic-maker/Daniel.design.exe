@@ -2,6 +2,7 @@ import AdventureScene from "../adventure/AdventureScene";
 import { MOVIES } from "../data/movies";
 import { recordCatInteraction } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import AudioManager from "../managers/AudioManager";
 
 // Room level for the Theatre — backdrop + Talk/Pet/Watch Movie hitboxes,
 // following the Library Room's reference pattern (backdrop + rectangular
@@ -31,6 +32,8 @@ export default class TheatreScene extends AdventureScene {
     buildScene() {
 
         this.backSceneKey = "World";
+
+        AudioManager.playBuildingMusic(this, "theatre");
 
         this.setBackdrop("theatre-room", NATIVE_WIDTH, NATIVE_HEIGHT);
 
