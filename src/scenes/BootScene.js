@@ -174,6 +174,34 @@ export default class BootScene extends Phaser.Scene {
         this.load.audio("music-theatre", "assets/audio/music/theatre.mp3");
         this.load.audio("music-gallery", "assets/audio/music/gallery.mp3");
 
+        // UI/interaction sfx — see managers/AudioManager.js's SFX map for
+        // how each of these actually gets triggered (hover/click/scene
+        // transition/viewer open-close/page turn/achievement/footsteps),
+        // all through that one shared utility rather than hardcoded per
+        // building.
+        this.load.audio("sfx-hover", "assets/audio/sfx/impactWood_heavy_001.ogg");
+        this.load.audio("sfx-click", "assets/audio/sfx/click5.ogg");
+        this.load.audio("sfx-transition", "assets/audio/sfx/confirmation_001.ogg");
+        this.load.audio("sfx-enter-cafe", "assets/audio/sfx/enter-building.mp3");
+        // These three play on BOTH entering and leaving their building (see
+        // AudioManager's BUILDING_ENTRY_SFX/BUILDING_EXIT_SFX), unlike
+        // sfx-enter-cafe above which is entry-only.
+        this.load.audio("sfx-door-library", "assets/audio/sfx/doorOpen_2.ogg");
+        this.load.audio("sfx-door-gallery", "assets/audio/sfx/doorClose_2.ogg");
+        this.load.audio("sfx-door-workshop", "assets/audio/sfx/doorClose_1.ogg");
+        this.load.audio("sfx-viewer-open", "assets/audio/sfx/bookOpen.ogg");
+        this.load.audio("sfx-viewer-close", "assets/audio/sfx/bookClose.ogg");
+        this.load.audio("sfx-page-turn", "assets/audio/sfx/bookFlip2.ogg");
+        this.load.audio("sfx-achievement", "assets/audio/sfx/achievement1.mp3");
+        // Overrides the generic sfx-click specifically for the Workshop's
+        // computer hitbox (see WorkshopScene.js's clickSfx override on that
+        // one addHitbox call).
+        this.load.audio("sfx-computer-select", "assets/audio/sfx/confirmation_002.ogg");
+
+        for (let i = 0; i < 10; i++) {
+            this.load.audio(`sfx-footstep-${i}`, `assets/audio/sfx/footstep${String(i).padStart(2, "0")}.ogg`);
+        }
+
     }
 
     create() {

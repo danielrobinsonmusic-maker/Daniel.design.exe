@@ -14,7 +14,12 @@ const ContentType = {
     // frame's content area via a Phaser DOM Element — see
     // TakeoverFrameScene.renderYouTubeEmbed. Needs `embedUrl` (the full
     // youtube.com/embed/... URL) and optionally `caption`.
-    YOUTUBE_EMBED: "youtube-embed"
+    YOUTUBE_EMBED: "youtube-embed",
+    // A set of local video files played back to back, looping the whole
+    // set once the last one finishes, via a Phaser Video GameObject — see
+    // TakeoverFrameScene.renderVideoPlaylist. Needs `videos` (an ordered
+    // array of file paths).
+    VIDEO_PLAYLIST: "video-playlist"
 };
 
 export default ContentType;

@@ -1,3 +1,5 @@
+import AudioManager from "../managers/AudioManager";
+
 // The single bottom-third UI element every adventure scene shares — it
 // serves three roles depending on context (idle prompt text, hover verb
 // label, dialogue/menu display), per the design spec, rather than three
@@ -264,7 +266,10 @@ export default class AdventureBar {
             label.on("pointerover", () => label.setColor("#7a9ad9"));
             label.on("pointerout", () => label.setColor("#3f5f9f"));
             label.on("pointerdown", () => {
-                if (this.optionCallbacks[index]) this.optionCallbacks[index]();
+                if (this.optionCallbacks[index]) {
+                    AudioManager.playClickSfx(this.scene);
+                    this.optionCallbacks[index]();
+                }
             });
 
             this.container.add(label);

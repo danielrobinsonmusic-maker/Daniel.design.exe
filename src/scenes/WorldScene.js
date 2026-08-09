@@ -21,6 +21,19 @@ const BUILDING_SCENES = {
     "Theatre": "Theatre"
 };
 
+// Lowercase building keys, same set AudioManager.playBuildingMusic and
+// CatAchievement already use — needed here (rather than reusing
+// BUILDING_SCENES' values directly) since those are scene keys ("Cafe",
+// capitalized) not the lowercase keys AudioManager.playBuildingEntrySfx
+// expects.
+const BUILDING_KEYS = {
+    "Library": "library",
+    "Gallery": "gallery",
+    "Workshop": "workshop",
+    "Café": "cafe",
+    "Theatre": "theatre"
+};
+
 // Edison sits just east of the torii gate (see WorldObjects.js's
 // createGateCat — same CAT_BASE_X/Y math, converted to tile coordinates:
 // CAT_BASE_X 1348.5 / TILE_SIZE 32 = tile 42, same row as the gate/Woods
@@ -317,6 +330,8 @@ updateInteractions() {
         if (sceneKey) {
 
             hud.hideInteraction();
+
+            AudioManager.playBuildingEntrySfx(this, BUILDING_KEYS[target.name]);
 
             // The interaction zone's own tile IS the door tile the player
             // was just standing on — forwarded through so ESC from inside

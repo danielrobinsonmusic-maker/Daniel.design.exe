@@ -1,6 +1,12 @@
 import Phaser from "phaser";
+import AudioManager from "../managers/AudioManager";
 
 const SPEED = 180;
+
+// How often a footstep sfx fires while moving, in ms — tuned to feel like a
+// walk cadence rather than firing every frame (AudioManager.playFootstepSfx
+// itself handles which of the 10 footstep files to pick).
+const FOOTSTEP_INTERVAL = 350;
 
 // Visual canvas: 1 tile wide x 2 tiles tall (matches TILE_SIZE=32, i.e.
 // 16x32 at native 16px-per-tile resolution, displayed at 2x). Collision
@@ -100,6 +106,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         }
 
+        this.lastFootstepAt = 0;
+
         this.cursors = scene.input.keyboard.createCursorKeys();
 
         this.keys = scene.input.keyboard.addKeys({
@@ -139,6 +147,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         if (this.hasArt) {
             this.updateAnimation(vx, vy, moving);
+        }
+
+        if (moving) {
+
+            const now = this.scene.time.now;
+
+            if (now - this.lastFootstepAt >= FOOTSTEP_INTERVAL) {
+                this.lastFootstepAt = now;
+                AudioManager.playFootstepSfx(this.scene);
+            }
+
         }
 
     }

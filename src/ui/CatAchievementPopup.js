@@ -1,3 +1,5 @@
+import AudioManager from "../managers/AudioManager";
+
 const POPUP_TEXTURE_KEY = "cat-achievement";
 const DISPLAY_WIDTH_FRACTION = 0.62; // fraction of canvas width — height follows the art's own aspect ratio
 const FADE_IN_DURATION = 400;
@@ -13,6 +15,8 @@ const DEPTH = 10000; // above the AdventureBar (5000) and the Cursor, so it alwa
 export function showCatAchievementPopup(scene) {
 
     if (!scene.textures.exists(POPUP_TEXTURE_KEY)) return;
+
+    AudioManager.playAchievementSfx(scene);
 
     const { width, height } = scene.scale;
 

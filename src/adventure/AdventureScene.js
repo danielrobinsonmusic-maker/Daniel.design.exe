@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import AdventureBar from "./AdventureBar";
 import Cursor from "./Cursor";
+import AudioManager from "../managers/AudioManager";
 
 // Shared foundation for every point-and-click screen in a building's
 // Room -> Close-up -> Takeover chain. A concrete scene (LibraryScene,
@@ -154,6 +155,8 @@ export default class AdventureScene extends Phaser.Scene {
 
     fadeTo(sceneKey, data) {
 
+        AudioManager.playTransitionSfx(this, sceneKey);
+
         this.cameras.main.fadeOut(FADE_DURATION, 0, 0, 0);
 
         this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
@@ -192,7 +195,12 @@ export default class AdventureScene extends Phaser.Scene {
     // width/height — plain rectangular hitboxes tied to image coordinates,
     // deliberately not pixel masks, per the design spec ("prioritize
     // reliability and ease of iteration").
-    addHitbox({ xRange, yRange, verb, onClick }) {
+    // clickSfx: optional override sfx key for this specific hitbox's click
+    // sound, in place of the generic AudioManager click sfx — e.g.
+    // WorkshopScene's computer hitbox uses "sfx-computer-select" instead of
+    // the default. Undefined for every other hitbox, which keeps
+    // AudioManager.playClickSfx's own default.
+    addHitbox({ xRange, yRange, verb, onClick, clickSfx }) {
 
         const { left, top, dispW, dispH } = this.backdropMetrics;
         const [x0, x1] = xRange;
@@ -214,6 +222,7 @@ export default class AdventureScene extends Phaser.Scene {
             this.cursor.setHover(true);
             if (this.bar) this.bar.showVerb(verb);
             glow.show();
+            AudioManager.playHoverSfx(this);
         });
 
         zone.on("pointerout", () => {
@@ -223,6 +232,7 @@ export default class AdventureScene extends Phaser.Scene {
         });
 
         zone.on("pointerdown", () => {
+            AudioManager.playClickSfx(this, clickSfx);
             onClick();
         });
 

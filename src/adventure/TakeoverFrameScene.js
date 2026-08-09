@@ -153,6 +153,10 @@ export default class TakeoverFrameScene extends AdventureScene {
                 this.renderYouTubeEmbed();
                 break;
 
+            case ContentType.VIDEO_PLAYLIST:
+                this.renderVideoPlaylist();
+                break;
+
             default:
                 this.renderText("Content coming soon.");
 
@@ -165,11 +169,13 @@ export default class TakeoverFrameScene extends AdventureScene {
     // one-off Takeover scene used. `top` overrides that default entirely
     // (see renderYouTubeEmbed, which positions its caption relative to
     // the embed's own height rather than a fixed title-clearance offset).
+    // Returns the Text object — renderVideoPlaylist uses this to remove
+    // its own "Loading video..." message once playback actually starts.
     renderText(content, top) {
 
         const bodyTop = top !== undefined ? top : this.contentBounds.top + (this.content.title ? 70 : 0);
 
-        this.add.text(this.contentBounds.centerX, bodyTop, content || "", {
+        return this.add.text(this.contentBounds.centerX, bodyTop, content || "", {
             fontFamily: "monospace",
             fontSize: "15px",
             color: "#3a2c1c",
@@ -237,6 +243,81 @@ export default class TakeoverFrameScene extends AdventureScene {
         if (this.content.caption) {
             this.renderText(this.content.caption, this.contentBounds.top + height + YOUTUBE_CAPTION_GAP);
         }
+
+    }
+
+    // A local playlist (this.content.videos, an ordered array of file
+    // paths) played back to back via one Phaser Video GameObject, looping
+    // the whole set once the last clip finishes rather than stopping.
+    // Loaded on demand here rather than up front in BootScene (these run
+    // several MB each — see movies.js) — cached by content.id so
+    // re-opening the same movie later in the same session skips straight
+    // to playback instead of re-downloading. Contain-fit within the
+    // content area (same "measure, don't guess" convention as
+    // renderImage), sized/positioned below the title using the same
+    // fixed offset renderText/renderPdfButton use for theirs.
+    renderVideoPlaylist() {
+
+        const sources = this.content.videos;
+
+        if (!sources || !sources.length) {
+            this.renderText("Video coming soon.");
+            return;
+        }
+
+        const keys = sources.map((_, i) => `video-${this.content.id}-${i}`);
+        const loadingText = this.renderText("Loading video...");
+
+        const start = () => {
+            loadingText.destroy();
+            this.playVideoPlaylist(keys);
+        };
+
+        const alreadyCached = keys.every((key) => this.cache.video.exists(key));
+
+        if (alreadyCached) {
+            start();
+            return;
+        }
+
+        keys.forEach((key, i) => {
+            if (!this.cache.video.exists(key)) {
+                this.load.video(key, sources[i]);
+            }
+        });
+
+        this.load.once("complete", start);
+        this.load.start();
+
+    }
+
+    playVideoPlaylist(keys) {
+
+        const top = this.contentBounds.top + (this.content.title ? 70 : 0);
+        const maxWidth = this.contentBounds.width;
+        const maxHeight = this.contentBounds.bottom - top;
+        const centerX = this.contentBounds.centerX;
+        const centerY = top + (maxHeight / 2);
+
+        const fitToContentArea = (vid) => {
+            const scale = Math.min(maxWidth / vid.width, maxHeight / vid.height);
+            vid.setDisplaySize(vid.width * scale, vid.height * scale);
+        };
+
+        const video = this.add.video(centerX, centerY, keys[0]);
+        video.setDepth(1);
+        video.on("created", (vid) => fitToContentArea(vid));
+
+        let index = 0;
+
+        // Wraps back to keys[0] once the last clip finishes — "loop, back
+        // to back" over the whole set, not just looping a single clip.
+        video.on("complete", () => {
+            index = (index + 1) % keys.length;
+            video.changeSource(keys[index], true, false);
+        });
+
+        video.play(false);
 
     }
 

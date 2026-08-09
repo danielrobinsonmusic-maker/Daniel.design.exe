@@ -39,16 +39,19 @@ export const TAKEOVER_FRAMES = {
     // Theatre movie posters (all four) — real art already existed
     // (theatre-room-screen.png, the theatre's own projector screen) from
     // before this system existed, so this uses it directly rather than a
-    // generated placeholder even though the underlying video content is
-    // still TBD. contentArea is the screen's light interior, inset from
-    // its dark bezel (checked visually against a crop of the art, not
-    // auto-detected — the room's dim, gradient lighting made a brightness
-    // threshold pick up curtain highlights along with the screen).
+    // generated placeholder even though 3 of the 4 posters' underlying
+    // video content is still TBD. contentArea is the screen's light
+    // interior, inset from its dark bezel — checked against a grid
+    // overlay by eye (not a brightness/flood-fill threshold: the room's
+    // dim, gradient spotlight lighting has no clean cutoff between the
+    // screen and the curtain highlights around it, confirmed by sampling
+    // — brightness increases continuously well past the screen's actual
+    // edge with no plateau to threshold against).
     "movie-screen": {
         textureKey: "theatre-room-screen",
         nativeWidth: NATIVE_WIDTH,
         nativeHeight: NATIVE_HEIGHT,
-        contentArea: { xRange: [0.17, 0.83], yRange: [0.145, 0.70] }
+        contentArea: { xRange: [0.156, 0.837], yRange: [0.149, 0.696] }
     },
 
     // Workshop's three "look/listen" hitboxes each now have their own real

@@ -53,6 +53,7 @@ export default class WorkshopScene extends AdventureScene {
             xRange: [0.74, 0.84],
             yRange: [0.30, 0.52],
             verb: "Look",
+            clickSfx: "sfx-computer-select",
             onClick: () => this.viewContent("computer")
         });
 
