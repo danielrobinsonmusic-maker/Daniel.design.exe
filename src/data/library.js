@@ -4,7 +4,7 @@ const library = [
         id: "resume",
         title: "Resume (PDF)",
         type: ContentType.PDF,
-        file: "resume.pdf"
+        file: "DanielRobinson_Resume.pdf"
     },
     {
         id: "resume-web",

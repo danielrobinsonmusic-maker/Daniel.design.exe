@@ -48,6 +48,7 @@ export default class TheatreScene extends AdventureScene {
             xRange: [0.45, 0.53],
             yRange: [0.46, 0.57],
             verb: "Pet",
+            clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });
 

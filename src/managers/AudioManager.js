@@ -101,7 +101,8 @@ const SFX = {
     VIEWER_OPEN: "sfx-viewer-open",
     VIEWER_CLOSE: "sfx-viewer-close",
     PAGE_TURN: "sfx-page-turn",
-    ACHIEVEMENT: "sfx-achievement"
+    ACHIEVEMENT: "sfx-achievement",
+    CAT: "sfx-cat"
 };
 
 // Entering these buildings specifically swaps out the generic transition
@@ -347,6 +348,18 @@ export default class AudioManager {
 
     static playAchievementSfx(scene) {
         this.playSfx(scene, SFX.ACHIEVEMENT);
+    }
+
+    // Every cat interaction across the game uses this instead of the
+    // generic click — the five buildings' petCat hitboxes pass
+    // clickSfx: "sfx-cat" straight into addHitbox (see
+    // AdventureScene.addHitbox's own clickSfx override) rather than calling
+    // this directly, since that path already has a sound-override hook;
+    // this wrapper exists for Edison in WorldScene, whose cat interaction
+    // is a proximity + E-press rather than a hitbox click, so it has no
+    // such hook to plug into.
+    static playCatSfx(scene) {
+        this.playSfx(scene, SFX.CAT);
     }
 
     // A random footstep file each call, never the same one twice in a row

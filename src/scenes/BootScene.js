@@ -24,6 +24,7 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("ui-panel", "assets/ui/panel.png");
         this.load.image("dialogue-panel", "assets/ui/dialogue-panel.png");
         this.load.image("cat-achievement", "assets/ui/cat-achievement.png");
+        this.load.image("zoom", "assets/ui/zoom.png");
 
         // titlebar.png is still an empty placeholder — Panel.js falls back
         // to a flat title bar when this texture isn't loaded. Add the load
@@ -197,6 +198,10 @@ export default class BootScene extends Phaser.Scene {
         // computer hitbox (see WorkshopScene.js's clickSfx override on that
         // one addHitbox call).
         this.load.audio("sfx-computer-select", "assets/audio/sfx/confirmation_002.ogg");
+        // Every cat interaction across every building (each Room scene's
+        // petCat hitbox, plus Edison in WorldScene — also a cat, see
+        // AudioManager.playCatSfx) uses this instead of the generic click.
+        this.load.audio("sfx-cat", "assets/audio/sfx/cat.mp3");
 
         for (let i = 0; i < 10; i++) {
             this.load.audio(`sfx-footstep-${i}`, `assets/audio/sfx/footstep${String(i).padStart(2, "0")}.ogg`);
@@ -244,6 +249,19 @@ export default class BootScene extends Phaser.Scene {
             const catAchievementTexture = this.textures.get("cat-achievement");
             if (!catAchievementTexture.has("content")) {
                 catAchievementTexture.add("content", 0, 168, 349, 1232, 274);
+            }
+        }
+
+        // zoom.png (Cursor.js's magnifying-glass cursor, shown in place of
+        // the usual arrow while zoomed into a PDF page or other viewer
+        // content — see TakeoverFrameScene's openPageZoom/closePageZoom)
+        // is another 1536x1024 export with the same dead-padding problem —
+        // real content only lives in the (454,137)-(1105,813) sub-rect
+        // (measured via PIL alpha bbox). Same technique as ui-panel above.
+        if (this.textures.exists("zoom")) {
+            const zoomTexture = this.textures.get("zoom");
+            if (!zoomTexture.has("content")) {
+                zoomTexture.add("content", 0, 454, 137, 651, 676);
             }
         }
 

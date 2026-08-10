@@ -13,6 +13,57 @@ const DEFAULT_SCALE = 1;
 const HOVER_SCALE = 1.25;
 const DEPTH = 10000; // above the AdventureBar and every hitbox
 
+// Swapped in for the arrow while zoomed into a PDF page or other viewer
+// content (see setZooming, called from TakeoverFrameScene's
+// openPageZoom/closePageZoom). Unlike the arrow, this can't be a Phaser
+// GameObject drawn onto the canvas — the zoom overlay it needs to appear
+// over is a Phaser DOM Element (a real browser <img>, used so the zoomed
+// page renders at native resolution instead of this game's fixed 960x540
+// canvas — see TakeoverFrameScene's own comment on BOOK_ZOOM_*), and DOM
+// Elements are a separate browser layer stacked in front of the entire
+// canvas — anything drawn "on top" inside the canvas is still visually
+// behind them. A real CSS cursor (Phaser's setDefaultCursor, which just
+// sets canvas.style.cursor) is the only thing that renders correctly over
+// both the canvas AND a DOM overlay, so that's what this uses instead —
+// rasterized down to CURSOR_SIZE once and cached as a data URL. No
+// hover-tint support in this mode (a static CSS cursor can't be recolored
+// live), but nothing is hoverable during the full-screen zoom overlay
+// besides "click anywhere to close" anyway, so that's never missed in
+// practice; the arrow's own hover tint is untouched for every other
+// interaction in the game.
+const ZOOM_CURSOR_TEXTURE_KEY = "zoom";
+const ZOOM_CURSOR_CROP = { x: 454, y: 137, w: 651, h: 676 }; // measured via PIL alpha bbox, same as BootScene's "content" sub-frame for this asset
+const ZOOM_CURSOR_CSS_SIZE = 32; // close to the arrow's own ~28px footprint
+
+let zoomCursorCss = undefined; // undefined = not built yet, "" = built and unavailable (asset never loaded)
+
+function getZoomCursorCss(scene) {
+
+    if (zoomCursorCss !== undefined) return zoomCursorCss;
+
+    if (!scene.textures.exists(ZOOM_CURSOR_TEXTURE_KEY)) {
+        zoomCursorCss = "";
+        return zoomCursorCss;
+    }
+
+    const source = scene.textures.get(ZOOM_CURSOR_TEXTURE_KEY).getSourceImage();
+    const { x, y, w, h } = ZOOM_CURSOR_CROP;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = ZOOM_CURSOR_CSS_SIZE;
+    canvas.height = Math.round(ZOOM_CURSOR_CSS_SIZE * (h / w));
+
+    canvas.getContext("2d").drawImage(source, x, y, w, h, 0, 0, canvas.width, canvas.height);
+
+    const hotspotX = Math.round(canvas.width / 2);
+    const hotspotY = Math.round(canvas.height / 2);
+
+    zoomCursorCss = `url(${canvas.toDataURL()}) ${hotspotX} ${hotspotY}, auto`;
+
+    return zoomCursorCss;
+
+}
+
 // Classic pointer-arrow silhouette, tip at (2,2) — drawn once per game
 // session (same cache-check convention as TileRenderer's baked ground
 // texture) and reused as a plain tinted Image, so recoloring on hover is
@@ -48,6 +99,7 @@ export default class Cursor {
 
         this.scene = scene;
         this.hovering = false;
+        this.zooming = false;
 
         ensureCursorTexture(scene);
 
@@ -84,6 +136,24 @@ export default class Cursor {
 
         this.arrow.setTint(isHovering ? HOVER_TINT : DEFAULT_TINT);
         this.arrow.setScale(isHovering ? HOVER_SCALE : DEFAULT_SCALE);
+
+    }
+
+    // See the ZOOM_CURSOR_* comment above for why this swaps to a real CSS
+    // cursor (via Phaser's setDefaultCursor) instead of another sprite —
+    // degrades gracefully (silently keeps the arrow) if zoom.png never
+    // loaded.
+    setZooming(isZooming) {
+
+        if (this.zooming === isZooming) return;
+
+        const cursorCss = getZoomCursorCss(this.scene);
+        if (!cursorCss) return;
+
+        this.zooming = isZooming;
+
+        this.arrow.setVisible(!isZooming);
+        this.scene.input.setDefaultCursor(isZooming ? cursorCss : "none");
 
     }
 

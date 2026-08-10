@@ -38,6 +38,7 @@ export default class CafeScene extends AdventureScene {
             xRange: [0.10, 0.18],
             yRange: [0.42, 0.68],
             verb: "Pet",
+            clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });
 

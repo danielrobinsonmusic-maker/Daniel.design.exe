@@ -45,6 +45,7 @@ export default class LibraryScene extends AdventureScene {
             xRange: [0.28, 0.43],
             yRange: [0.40, 0.62],
             verb: "Pet",
+            clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });
 

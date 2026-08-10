@@ -5,16 +5,60 @@ import ContentType from "./contentTypes";
 // TakeoverFrameScene (frameKey "workshop-blueprints"/"workshop-computer"/
 // "workshop-music" — see adventure/takeoverFrames.js) — which entry backs
 // a given visit comes in via init(data), same "one scene, data picked at
-// fadeTo time" approach as data/library.js/data/movies.js. Blueprints and
-// computer are still placeholders (title is the viewer shell's name, not
-// a specific piece of content, since there's no individual item to name
-// yet); guitar/amp now has real content — a YouTube playlist embed.
+// fadeTo time" approach as data/library.js/data/movies.js. Computer is
+// still a placeholder (title is the viewer shell's name, not a specific
+// piece of content, since there's no individual item to name yet);
+// guitar/amp has real content (a YouTube playlist embed), and blueprints
+// now has real content too — a GALLERY (see TakeoverFrameScene.renderGallery).
 export const WORKSHOP_CONTENT = [
     {
         id: "blueprints",
-        title: "Gallery Viewer",
-        type: ContentType.PLACEHOLDER,
-        content: "Game assets and inspirational photos of people and places — coming soon."
+        // No title — the images fill the whole content area (see
+        // TakeoverFrameScene.renderGallery/displayGalleryItem), so a
+        // heading here would just eat into that space.
+        type: ContentType.GALLERY,
+        // Relative to public/assets/ — TakeoverFrameScene.renderGallery
+        // builds each image's load URL as `assets/${folder}/${file}`.
+        folder: "documents/blueprints",
+        // A static site has no way to list a folder's contents at
+        // runtime, so — same as every other content list in this project
+        // (library.js, movies.js) — this is a hand-authored, pre-sorted
+        // (alphabetical, case-insensitive) filename list rather than
+        // something discovered on the fly. Re-run this sort if files are
+        // added/removed:
+        //   python3 -c "import os; files=[f for f in os.listdir('public/assets/documents/blueprints') if not f.startswith('.')]; files.sort(key=str.lower); print('\n'.join(files))"
+        files: [
+            "Adventurers.JPG",
+            "Black Phoebe.png",
+            "Bush 2.png",
+            "Character Sprite Sheet.png",
+            "Ed.png",
+            "Fountain Animation 1.png",
+            "Fountain Animation 2.png",
+            "Fountain Animation 3.png",
+            "Fountain Animation 4.png",
+            "House Finch.png",
+            "Interface Sheet.png",
+            "Japanese Garden Tokyo.jpeg",
+            "Monarch.png",
+            "Northern Michigan.jpg",
+            "Petal.png",
+            "Retro Town Tileset and Map Guide.png",
+            "Secondary Spritesheet.png",
+            "Signage.jpeg",
+            "Swallowtail.png",
+            "The Real Ed the Cat.JPG",
+            "The Real Workshop.JPG",
+            "Tokyo.jpeg",
+            "torii.png",
+            "Town green tileset showcase.png",
+            "Tree 1.png",
+            "Tree 2.png",
+            "Tree 3.png",
+            "Tree 4.png",
+            "Walking Animation.png",
+            "Yellow Swallowtail.jpeg"
+        ]
     },
     {
         id: "computer",

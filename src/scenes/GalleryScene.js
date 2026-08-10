@@ -80,6 +80,7 @@ export default class GalleryScene extends AdventureScene {
             xRange: [0.73, 0.80],
             yRange: [0.62, 0.82],
             verb: "Pet",
+            clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });
 

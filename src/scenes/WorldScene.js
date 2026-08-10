@@ -418,6 +418,8 @@ updateEdisonInteraction(hud) {
 
     if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
 
+        AudioManager.playCatSfx(this);
+
         this.edisonLineActive = true;
 
         this.time.delayedCall(EDISON_LINE_DURATION, () => {

@@ -68,6 +68,7 @@ export default class WorkshopScene extends AdventureScene {
             xRange: [0.74, 0.84],
             yRange: [0.60, 0.80],
             verb: "Pet",
+            clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });
 
