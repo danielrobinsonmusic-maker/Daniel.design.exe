@@ -2,6 +2,8 @@ import Phaser from "phaser";
 import { NORTH_BUFFER_ROWS } from "../world/Buildings";
 import { isCatAchievementComplete } from "../managers/CatAchievement";
 import AudioManager from "../managers/AudioManager";
+import SaveManager from "../managers/SaveManager";
+import { OVERLOOK_VISITED_FLAG } from "../world/Minimap";
 
 // Background art is 1536x1024 — "contain" fit against the 960x540 canvas
 // is height-constrained (540/1024 < 960/1536), so it always fills the
@@ -72,6 +74,11 @@ export default class OverlookScene extends Phaser.Scene {
         const { width, height } = this.scale;
 
         AudioManager.playArea(this, "overlook");
+
+        // Permanently reveals this location on the Town Square minimap
+        // (see world/Minimap.js) — hasFlag/setFlag no-op harmlessly on
+        // every visit after the first.
+        SaveManager.setFlag(OVERLOOK_VISITED_FLAG);
 
         // The hidden five-building cat achievement (see
         // managers/CatAchievement.js) swaps in the "with Edison" version

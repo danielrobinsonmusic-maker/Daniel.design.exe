@@ -25,6 +25,7 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("dialogue-panel", "assets/ui/dialogue-panel.png");
         this.load.image("cat-achievement", "assets/ui/cat-achievement.png");
         this.load.image("zoom", "assets/ui/zoom.png");
+        this.load.image("minimap-frame", "assets/ui/minimap-frame.png");
 
         // titlebar.png is still an empty placeholder — Panel.js falls back
         // to a flat title bar when this texture isn't loaded. Add the load
@@ -262,6 +263,21 @@ export default class BootScene extends Phaser.Scene {
             const zoomTexture = this.textures.get("zoom");
             if (!zoomTexture.has("content")) {
                 zoomTexture.add("content", 0, 454, 137, 651, 676);
+            }
+        }
+
+        // minimap-frame.png is a 1254x1254 export with transparent padding
+        // around a wood picture-frame (real content only lives in the
+        // (10,169)-(1244,1041) sub-rect, measured via PIL alpha bbox) —
+        // same technique as ui-panel above. Minimap.js draws its own map
+        // content (forest/clearing fill, location dots, the player marker)
+        // directly on top of the frame's own baked-in parchment interior,
+        // using fractions of this cropped content rect (not the padded
+        // canvas) to find where that interior sits.
+        if (this.textures.exists("minimap-frame")) {
+            const minimapFrameTexture = this.textures.get("minimap-frame");
+            if (!minimapFrameTexture.has("content")) {
+                minimapFrameTexture.add("content", 0, 10, 169, 1234, 872);
             }
         }
 

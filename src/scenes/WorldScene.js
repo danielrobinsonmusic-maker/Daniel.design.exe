@@ -201,6 +201,16 @@ export default class WorldScene extends Phaser.Scene {
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
         this.cameras.main.setZoom(1.25);
 
+        // Town Square-only minimap — its own Scene (see MinimapScene.js/
+        // world/Minimap.js) rather than objects added here, so it isn't
+        // affected by this scene's own camera zoom set just above. Only
+        // launched while World is running (stopped on shutdown below),
+        // which is what actually makes it "Town Square only" — it's never
+        // running for interiors, close-ups, takeovers, or the Overlook.
+        this.scene.launch("Minimap");
+        this.scene.bringToTop("Minimap");
+        this.events.once("shutdown", () => this.scene.stop("Minimap"));
+
         // interaction setup
         this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.interactionTarget = null;
@@ -265,6 +275,8 @@ export default class WorldScene extends Phaser.Scene {
     this.updateFountainAudio();
 
     this.updateDepthSorting();
+
+    this.scene.get("Minimap").updatePlayerPosition(this.player.x, this.player.y);
 
 }
 // Lower on screen (larger Y) should render in front. Depth is keyed off

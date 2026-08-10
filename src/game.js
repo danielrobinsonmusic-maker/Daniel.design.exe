@@ -5,6 +5,7 @@ import TitleScene from "./scenes/TitleScene";
 import NameScene from "./scenes/NameScene";
 import WorldScene from "./scenes/WorldScene";
 import HUDScene from "./scenes/HUDScene";
+import MinimapScene from "./scenes/MinimapScene";
 import AppScene from "./scenes/AppScene";
 import LibraryScene from "./scenes/LibraryScene";
 import LibrarianCloseupScene from "./scenes/LibrarianCloseupScene";
@@ -57,6 +58,7 @@ const config = {
         NameScene,
         WorldScene,
         HUDScene,
+        MinimapScene,
         AppScene,
         LibraryScene,
         LibrarianCloseupScene,

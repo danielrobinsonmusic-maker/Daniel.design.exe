@@ -10,13 +10,15 @@ export const TILE = {
     PLAZA: 3
 };
 
-const MAP_WIDTH = 75;
+// Exported so Minimap.js can map world pixel coordinates onto its own
+// content window without duplicating the grid size.
+export const MAP_WIDTH = 75;
 // The original layout was 50 rows; NORTH_BUFFER_ROWS of solid forest are
 // added north of it (see the constant's own comment in Buildings.js), and
 // every coordinate below that came from that original layout keeps its
 // number but adds NORTH_BUFFER_ROWS, so the whole town keeps its exact
 // original shape just shifted down to leave room up top.
-const MAP_HEIGHT = 50 + NORTH_BUFFER_ROWS;
+export const MAP_HEIGHT = 50 + NORTH_BUFFER_ROWS;
 
 // Shared by the primary scatter and every density bump pass below — stay
 // clear of the forest border ring itself.

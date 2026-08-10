@@ -1273,11 +1273,26 @@ export default class TakeoverFrameScene extends AdventureScene {
     // page does.
     displayPdfGalleryItem(key, filename) {
 
-        const { left, right, top, bottom, centerX } = this.contentBounds;
-        const bodyTop = top + (this.content.title ? 70 : 0);
-        const safeTop = bodyTop + GALLERY_PADDING;
-        const safeBottom = bottom - GALLERY_PADDING;
-        const maxWidth = (right - left) - (GALLERY_PADDING * 2);
+        // Centered on the left page specifically (see getBookPageZones),
+        // not the full two-page spread — PDF_GALLERY only ever opens
+        // through the library-book frame, so it should read like every
+        // other single-item book page (a News-and-Featured-Work image via
+        // renderCarouselImage, a short quote card via renderBookFlow), not
+        // like the Workshop/Gallery's own full-spread galleries. No
+        // bodyTop title offset either — usesBookFlow suppresses the
+        // generic floating title for this content type (see buildScene),
+        // so reserving space for one here would just shrink the preview
+        // for no reason.
+        const { left: page } = this.getBookPageZones();
+        const pad = BOOK_FLOW_PADDING;
+
+        const safeLeft = page.left + pad;
+        const safeRight = page.right - pad;
+        const safeTop = page.top + pad;
+        const safeBottom = page.bottom - pad;
+
+        const maxWidth = safeRight - safeLeft;
+        const centerX = (safeLeft + safeRight) / 2;
 
         const title = filename.replace(/\.[^./\\]+$/, "");
 
@@ -1352,7 +1367,18 @@ export default class TakeoverFrameScene extends AdventureScene {
     // already reads its document id/file/folder from this.content rather
     // than taking them as parameters. this.pdfGalleryTopContent holds
     // onto the real gallery content so closeFullPdf can restore it.
-    openFullPdf(filename) {
+    //
+    // Immediately zooms into page 1 once the spread's rendered — the same
+    // magnifying-glass "click to see full resolution" mechanic a page's
+    // own hitbox uses (openPageZoom), just triggered automatically here
+    // instead of requiring a second click on the now-visible page, so
+    // picking a preview goes straight to the fully-rendered document in
+    // one click rather than stopping at the smaller in-book view first.
+    // That in-book view (with its own page-turn arrows) is still built
+    // underneath and reachable by backing out of the zoom (ESC once) —
+    // nothing about multi-page navigation is lost, it's just one level
+    // deeper than before instead of the first thing shown.
+    async openFullPdf(filename) {
 
         this.pdfGalleryObjects.forEach((obj) => obj.destroy());
         this.pdfGalleryObjects = [];
@@ -1372,7 +1398,15 @@ export default class TakeoverFrameScene extends AdventureScene {
         };
         this.pdfGalleryFullViewActive = true;
 
-        this.renderBookPdf();
+        await this.renderBookPdf();
+
+        if (this.cancelled) return;
+
+        const firstPageKey = `pdf-page-${this.content.id}-1`;
+
+        if (this.textures.exists(firstPageKey)) {
+            this.openPageZoom(firstPageKey);
+        }
 
     }
 
@@ -1453,7 +1487,7 @@ export default class TakeoverFrameScene extends AdventureScene {
         this.prevArrow = this.createNavArrow("prev", () => this.turnPage(-1));
         this.nextArrow = this.createNavArrow("next", () => this.turnPage(1));
 
-        this.renderBookSpread();
+        await this.renderBookSpread();
 
     }
 
@@ -1499,8 +1533,12 @@ export default class TakeoverFrameScene extends AdventureScene {
     // page images themselves get torn down and rebuilt each time
     // (this.pageObjects); the arrow hitboxes/graphics are created once in
     // renderBookPdf and just toggled here via updateBookArrows, so
-    // repeated page turns don't leak GameObjects.
-    renderBookSpread() {
+    // repeated page turns don't leak GameObjects. Async (awaiting both
+    // page renders) so openFullPdf can await a spread being fully on
+    // screen before immediately zooming into it — turnPage itself doesn't
+    // need to await this, arrows/state already update synchronously
+    // before the images finish rendering, same as before this was async.
+    async renderBookSpread() {
 
         this.pageObjects.forEach((obj) => obj.destroy());
         this.pageObjects = [];
@@ -1512,10 +1550,14 @@ export default class TakeoverFrameScene extends AdventureScene {
         const leftPageNum = (this.spreadIndex * 2) + 1;
         const rightPageNum = leftPageNum + 1;
 
-        if (leftPageNum <= this.numPages) this.renderPdfPageIntoBox(leftPageNum, leftBox, token);
-        if (rightPageNum <= this.numPages) this.renderPdfPageIntoBox(rightPageNum, rightBox, token);
+        const pageRenders = [];
+
+        if (leftPageNum <= this.numPages) pageRenders.push(this.renderPdfPageIntoBox(leftPageNum, leftBox, token));
+        if (rightPageNum <= this.numPages) pageRenders.push(this.renderPdfPageIntoBox(rightPageNum, rightBox, token));
 
         this.updateBookArrows();
+
+        await Promise.all(pageRenders);
 
     }
 
