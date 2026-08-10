@@ -32,7 +32,16 @@ const ContentType = {
     // array of { feature, quote, source }; any card whose text is taller
     // than the visible area scrolls via its own up/down arrows (same
     // behavior as AdventureBar's dialogue-panel scroll).
-    CARD_CAROUSEL: "card-carousel"
+    CARD_CAROUSEL: "card-carousel",
+    // A folder of PDF files browsed one at a time via the same prev/next
+    // arrows as GALLERY/VIDEO_GALLERY/CARD_CAROUSEL, showing just each
+    // file's first page as a preview — see
+    // TakeoverFrameScene.renderPdfGallery. Same `folder`/`files` shape as
+    // GALLERY. Clicking a preview opens that file's full page-by-page
+    // reading view (the same one PDF-type content uses — see
+    // TakeoverFrameScene.renderBookPdf/openFullPdf), complete with its own
+    // page-turn arrows and per-page click-to-zoom.
+    PDF_GALLERY: "pdf-gallery"
 };
 
 export default ContentType;

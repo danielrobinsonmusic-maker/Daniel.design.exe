@@ -6,13 +6,34 @@ import { recordCatInteraction } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
-// Only one item (no per-visit variation like the books/movies/workshop
-// content have), so it's a plain constant here rather than its own data
-// file — passed straight through to TakeoverFrameScene as `content`.
+// Passed straight through to TakeoverFrameScene as `content` — a browsable
+// GALLERY (same reusable prev/next-arrow viewer as the Workshop's
+// blueprints, see TakeoverFrameScene.renderGallery) rather than its own
+// data file, since (like Workshop's) there's only one item, no per-visit
+// variation. A static site can't list a folder's contents at runtime, so
+// `files` is a hand-authored, pre-sorted (alphabetical, case-insensitive)
+// filename list — same convention as every other content list in this
+// project.
 const SLIDESHOW_CONTENT = {
-    title: "Gallery Slideshow",
-    type: ContentType.PLACEHOLDER,
-    content: "Gallery slideshow coming soon."
+    type: ContentType.GALLERY,
+    // Relative to public/assets/ — TakeoverFrameScene.renderGallery builds
+    // each image's load URL as `assets/${folder}/${file}`.
+    folder: "images/gallery",
+    files: [
+        "Adventurers.JPG",
+        "IMG_0115.PNG",
+        "IMG_0623.JPG",
+        "IMG_4329.jpeg",
+        "IMG_8055.JPG",
+        "IMG_8191.JPG",
+        "Japanese Garden Tokyo.jpeg",
+        "Northern Michigan.jpg",
+        "Signage.jpeg",
+        "The Real Ed the Cat.JPG",
+        "The Real Workshop.JPG",
+        "Tokyo.jpeg",
+        "Yellow Swallowtail.jpeg"
+    ]
 };
 
 // Room level for the Gallery — backdrop + Talk/Admire/Pet hitboxes,

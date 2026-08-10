@@ -231,14 +231,22 @@ export default class TakeoverFrameScene extends AdventureScene {
         return false;
     }
 
-    // While a page's zoom overlay is open (see openPageZoom), ESC closes
-    // just that overlay instead of the usual "go back a level" — otherwise
+    // Nested one level deeper each time: a page's zoom overlay (see
+    // openPageZoom) is the innermost level, so it closes first; a
+    // PDF_GALLERY's "full document" reading view (see openFullPdf) is the
+    // next level out, closing back to the gallery of previews; only then
+    // does ESC fall through to the usual "go back a level" — otherwise
     // it'd be too easy to accidentally back all the way out of the book
-    // while trying to close a zoomed page.
+    // while trying to close a zoomed page or a full document.
     onEscape() {
 
         if (this.zoomOverlay) {
             this.closePageZoom();
+            return true;
+        }
+
+        if (this.pdfGalleryFullViewActive) {
+            this.closeFullPdf();
             return true;
         }
 
@@ -254,6 +262,7 @@ export default class TakeoverFrameScene extends AdventureScene {
         this.content = data.content;
         this.zoomOverlay = null;
         this.bookFlowObjects = [];
+        this.pdfGalleryFullViewActive = false;
 
     }
 
@@ -380,6 +389,10 @@ export default class TakeoverFrameScene extends AdventureScene {
 
             case ContentType.CARD_CAROUSEL:
                 this.renderCardCarousel();
+                break;
+
+            case ContentType.PDF_GALLERY:
+                this.renderPdfGallery();
                 break;
 
             default:
@@ -693,21 +706,25 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
-    // One quote/attribution card at a time from content.cards, browsed via
-    // the shared prev/next arrows (createNavArrow) — created once here.
-    // The actual card content (feature header, quote body, source byline)
-    // renders through the same renderBookFlow every other book content
-    // type uses (see the BOOK_FLOW_* class comment), just called fresh on
-    // every arrow click.
+    // One item at a time from content.items, browsed via the shared
+    // prev/next arrows (createNavArrow) — created once here. Each item is
+    // either a quote card ({ type: "card", feature, quote, source }),
+    // rendered through the same renderBookFlow every other book content
+    // type uses (see the BOOK_FLOW_* class comment), or a single image
+    // ({ type: "image", file }), rendered through renderCarouselImage —
+    // see renderCardItem's dispatch. Mixing the two is what "News and
+    // Featured Work" (library.js) actually does; a books-only entry would
+    // just never include an "image" item.
     renderCardCarousel() {
 
-        if (!this.content.cards || !this.content.cards.length) {
+        if (!this.content.items || !this.content.items.length) {
             this.renderText("Coming soon.");
             return;
         }
 
         this.cardIndex = 0;
-        this.cardsData = this.content.cards;
+        this.cardsData = this.content.items;
+        this.carouselLoadToken = 0;
 
         this.prevArrow = this.createNavArrow("prev", () => this.turnCard(-1));
         this.nextArrow = this.createNavArrow("next", () => this.turnCard(1));
@@ -723,9 +740,13 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     renderCardItem() {
 
-        const card = this.cardsData[this.cardIndex];
+        const item = this.cardsData[this.cardIndex];
 
-        this.renderBookFlow({ header: card.feature, body: card.quote, source: card.source });
+        if (item.type === "image") {
+            this.renderCarouselImage(item);
+        } else {
+            this.renderBookFlow({ header: item.feature, body: item.quote, source: item.source });
+        }
 
         this.updateCardArrows();
 
@@ -738,6 +759,82 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         this.setNavArrowActive(this.prevArrow, hasPrev);
         this.setNavArrowActive(this.nextArrow, hasNext);
+
+    }
+
+    // A single image occupying just one page (the left page's own zone —
+    // see getBookPageZones — matching how a short text card naturally
+    // lands there too, rather than spanning the spread), centered both
+    // ways within it. Loaded on demand, same "check it's cached, show a
+    // loading message otherwise" shape as renderGalleryItem;
+    // `carouselLoadToken` guards a slow load against the user having
+    // already navigated to a different item (of either type) by the time
+    // it resolves — same technique as every other lazy-loaded viewer here.
+    renderCarouselImage(item) {
+
+        this.bookFlowObjects.forEach((obj) => obj.destroy());
+        this.bookFlowObjects = [];
+
+        const token = ++this.carouselLoadToken;
+        const key = `carousel-image-${this.content.id}-${item.file}`;
+
+        const show = () => {
+            if (this.cancelled || token !== this.carouselLoadToken) return;
+            this.displayCarouselImage(key);
+        };
+
+        if (this.textures.exists(key)) {
+            show();
+            return;
+        }
+
+        const loadingText = this.renderText("Loading...");
+        this.bookFlowObjects.push(loadingText);
+
+        this.load.image(key, `assets/${this.content.folder}/${encodeURIComponent(item.file)}`);
+        this.load.once("complete", () => {
+
+            if (token === this.carouselLoadToken) {
+                loadingText.destroy();
+                this.bookFlowObjects = this.bookFlowObjects.filter((obj) => obj !== loadingText);
+            }
+
+            show();
+
+        });
+        this.load.start();
+
+    }
+
+    displayCarouselImage(key) {
+
+        ensureGalleryContentFrame(this, key);
+
+        const texture = this.textures.get(key);
+        texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+        const frame = texture.has("content") ? "content" : undefined;
+
+        const { left: page } = this.getBookPageZones();
+        const pad = BOOK_FLOW_PADDING;
+
+        const safeLeft = page.left + pad;
+        const safeRight = page.right - pad;
+        const safeTop = page.top + pad;
+        const safeBottom = page.bottom - pad;
+
+        const maxWidth = safeRight - safeLeft;
+        const maxHeight = safeBottom - safeTop;
+        const centerX = (safeLeft + safeRight) / 2;
+        const centerY = (safeTop + safeBottom) / 2;
+
+        const image = this.add.image(centerX, centerY, key, frame);
+        image.setDepth(1);
+
+        const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+        image.setDisplaySize(image.width * scale, image.height * scale);
+
+        this.bookFlowObjects.push(image);
 
     }
 
@@ -1032,6 +1129,264 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
+    // One first-page preview at a time from content.files, browsed via the
+    // shared prev/next arrows (createNavArrow) — created once here.
+    // Clicking a preview hands off entirely to openFullPdf, which reuses
+    // renderBookPdf (the same page-by-page reading view resume/writing
+    // used to use directly) for that one specific file.
+    renderPdfGallery() {
+
+        if (!this.content.files || !this.content.files.length) {
+            if (this.usesBookFlow) {
+                this.renderBookFlow({ header: this.content.title, body: "Coming soon." });
+            } else {
+                this.renderText(`${this.content.title} coming soon.`);
+            }
+            return;
+        }
+
+        this.pdfGalleryObjects = [];
+        this.pdfGalleryLoadToken = 0;
+        this.pdfGalleryLoadingText = null;
+        this.pdfGalleryIndex = 0;
+        this.pdfGalleryFiles = this.content.files;
+        this.pdfGalleryFolder = this.content.folder;
+
+        this.prevArrow = this.createNavArrow("prev", () => this.turnPdfGallery(-1));
+        this.nextArrow = this.createNavArrow("next", () => this.turnPdfGallery(1));
+
+        this.renderPdfGalleryItem();
+
+    }
+
+    turnPdfGallery(delta) {
+        this.pdfGalleryIndex += delta;
+        this.renderPdfGalleryItem();
+    }
+
+    // Loads (or reuses an already-cached texture for) just page 1 of the
+    // current index's PDF, rendered via pdfjs same as a real book page
+    // (renderPdfPageIntoBox) — same "check it loaded, degrade gracefully
+    // while a load is in flight" shape as every other gallery here.
+    // `pdfGalleryLoadToken` guards against a slow load resolving after the
+    // user has already navigated further. Deliberately routes through
+    // loadPdfDocument (the same pdfjs document cache renderBookPdf uses)
+    // rather than fetching independently — opening this same file's full
+    // view later (see openFullPdf) then reuses the already-loaded
+    // document instead of re-fetching it.
+    renderPdfGalleryItem() {
+
+        this.pdfGalleryObjects.forEach((obj) => obj.destroy());
+        this.pdfGalleryObjects = [];
+
+        if (this.pdfGalleryLoadingText) {
+            this.pdfGalleryLoadingText.destroy();
+            this.pdfGalleryLoadingText = null;
+        }
+
+        const token = ++this.pdfGalleryLoadToken;
+        const filename = this.pdfGalleryFiles[this.pdfGalleryIndex];
+        const fileId = `${this.content.id}-${filename}`;
+        const thumbKey = `pdf-gallery-thumb-${fileId}`;
+
+        const show = () => {
+            if (this.cancelled || token !== this.pdfGalleryLoadToken) return;
+            this.displayPdfGalleryItem(thumbKey, filename);
+        };
+
+        if (this.textures.exists(thumbKey)) {
+            show();
+            return;
+        }
+
+        this.pdfGalleryLoadingText = this.renderText("Loading...");
+
+        this.loadPdfDocument({ id: fileId, file: filename, folder: this.pdfGalleryFolder })
+            .then((pdfDoc) => pdfDoc.getPage(1))
+            .then((page) => {
+
+                const viewport = page.getViewport({ scale: BOOK_PAGE_RENDER_SCALE });
+                const canvas = document.createElement("canvas");
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                return page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise.then(() => canvas);
+
+            })
+            .then((canvas) => {
+
+                if (this.cancelled || token !== this.pdfGalleryLoadToken) return;
+
+                this.textures.addCanvas(thumbKey, canvas);
+                this.textures.get(thumbKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+                if (this.pdfGalleryLoadingText) {
+                    this.pdfGalleryLoadingText.destroy();
+                    this.pdfGalleryLoadingText = null;
+                }
+
+                show();
+
+            })
+            .catch(() => {
+                if (token === this.pdfGalleryLoadToken && this.pdfGalleryLoadingText) {
+                    this.pdfGalleryLoadingText.setText("Couldn't load this document.");
+                }
+            });
+
+    }
+
+    // Centered the same way the image gallery centers its own item+caption
+    // block (see displayGalleryItem) — but unlike that one, doesn't cap
+    // scale at 1. These are pdfjs vector-renders at BOOK_PAGE_RENDER_SCALE,
+    // not arbitrary uploaded images, so there's no native-resolution
+    // pixelation risk in filling the available space the way a resume
+    // page does.
+    displayPdfGalleryItem(key, filename) {
+
+        const { left, right, top, bottom, centerX } = this.contentBounds;
+        const bodyTop = top + (this.content.title ? 70 : 0);
+        const safeTop = bodyTop + GALLERY_PADDING;
+        const safeBottom = bottom - GALLERY_PADDING;
+        const maxWidth = (right - left) - (GALLERY_PADDING * 2);
+
+        const title = filename.replace(/\.[^./\\]+$/, "");
+
+        const caption = this.add.text(centerX, 0, title, {
+            fontFamily: "monospace",
+            fontSize: "16px",
+            color: "#3a2c1c",
+            align: "center",
+            wordWrap: { width: maxWidth }
+        }).setOrigin(0.5, 0).setDepth(1);
+
+        const maxImageHeight = (safeBottom - safeTop) - GALLERY_CAPTION_GAP - caption.height;
+
+        const image = this.add.image(0, 0, key);
+        image.setDepth(1);
+
+        const scale = Math.min(maxWidth / image.width, maxImageHeight / image.height);
+        const dispW = image.width * scale;
+        const dispH = image.height * scale;
+        image.setDisplaySize(dispW, dispH);
+
+        const blockHeight = dispH + GALLERY_CAPTION_GAP + caption.height;
+        const blockTop = safeTop + (((safeBottom - safeTop) - blockHeight) / 2);
+        const imageCenterY = blockTop + (dispH / 2);
+
+        image.setPosition(centerX, imageCenterY);
+        caption.setPosition(centerX, blockTop + dispH + GALLERY_CAPTION_GAP);
+
+        this.pdfGalleryObjects.push(image, caption);
+
+        // Clicking the preview opens the full document — same click-to-
+        // zoom language (magnifying-glass cursor on hover) as a resume
+        // page's own hitbox (renderPdfPageIntoBox), since this leads to
+        // that exact same kind of reading view, just for a different,
+        // user-picked file.
+        const { left: bLeft, top: bTop, dispW: bDispW, dispH: bDispH } = this.backdropMetrics;
+        const imgLeft = centerX - (dispW / 2);
+        const imgTop = imageCenterY - (dispH / 2);
+
+        const hitZone = this.addHitbox({
+            xRange: [(imgLeft - bLeft) / bDispW, ((imgLeft + dispW) - bLeft) / bDispW],
+            yRange: [(imgTop - bTop) / bDispH, ((imgTop + dispH) - bTop) / bDispH],
+            verb: "Open",
+            onClick: () => this.openFullPdf(filename)
+        });
+
+        hitZone.on("pointerover", () => this.cursor.setZooming(true));
+        hitZone.on("pointerout", () => this.cursor.setZooming(false));
+
+        this.pdfGalleryObjects.push(hitZone);
+
+        this.updatePdfGalleryArrows();
+
+    }
+
+    updatePdfGalleryArrows() {
+
+        const hasPrev = this.pdfGalleryIndex > 0;
+        const hasNext = this.pdfGalleryIndex < this.pdfGalleryFiles.length - 1;
+
+        this.setNavArrowActive(this.prevArrow, hasPrev);
+        this.setNavArrowActive(this.nextArrow, hasNext);
+
+    }
+
+    // Hands off from the gallery-of-previews to the full page-by-page
+    // reading view — reuses renderBookPdf completely unchanged (page-turn
+    // arrows, per-page click-to-zoom with the magnifying-glass cursor,
+    // the works) by temporarily swapping this.content to a synthetic
+    // single-document object pointing at the clicked file, since every
+    // PDF-reading method here (loadPdfDocument, renderPdfPageIntoBox)
+    // already reads its document id/file/folder from this.content rather
+    // than taking them as parameters. this.pdfGalleryTopContent holds
+    // onto the real gallery content so closeFullPdf can restore it.
+    openFullPdf(filename) {
+
+        this.pdfGalleryObjects.forEach((obj) => obj.destroy());
+        this.pdfGalleryObjects = [];
+
+        if (this.pdfGalleryLoadingText) {
+            this.pdfGalleryLoadingText.destroy();
+            this.pdfGalleryLoadingText = null;
+        }
+
+        this.destroyNavArrows();
+
+        this.pdfGalleryTopContent = this.content;
+        this.content = {
+            id: `${this.content.id}-${filename}`,
+            file: filename,
+            folder: this.pdfGalleryFolder
+        };
+        this.pdfGalleryFullViewActive = true;
+
+        this.renderBookPdf();
+
+    }
+
+    // Reverses openFullPdf — back to browsing previews at whatever index
+    // the user was on before opening this file.
+    closeFullPdf() {
+
+        this.pageObjects.forEach((obj) => obj.destroy());
+        this.pageObjects = [];
+
+        this.destroyNavArrows();
+
+        this.content = this.pdfGalleryTopContent;
+        this.pdfGalleryFullViewActive = false;
+
+        this.prevArrow = this.createNavArrow("prev", () => this.turnPdfGallery(-1));
+        this.nextArrow = this.createNavArrow("next", () => this.turnPdfGallery(1));
+
+        this.renderPdfGalleryItem();
+
+    }
+
+    // Shared prev/next teardown — used when switching between the two
+    // very different arrow behaviors PDF_GALLERY toggles between
+    // (browsing previews vs. turning pages), unlike every other viewer
+    // here, which creates its nav arrows exactly once and never needs to
+    // replace them.
+    destroyNavArrows() {
+
+        if (this.prevArrow) {
+            this.prevArrow.image.destroy();
+            this.prevArrow.zone.destroy();
+            this.prevArrow = null;
+        }
+
+        if (this.nextArrow) {
+            this.nextArrow.image.destroy();
+            this.nextArrow.zone.destroy();
+            this.nextArrow = null;
+        }
+
+    }
+
     // Kicks off loading the PDF (from cache if this book's already been
     // opened this session — see loadPdfDocument), then renders the first
     // spread once it resolves. `cancelled` guards every step after an
@@ -1091,11 +1446,18 @@ export default class TakeoverFrameScene extends AdventureScene {
     }
 
     // One pdfjs loading task per document id, cached at module scope (see
-    // pdfDocCache) — same relative URL scheme as openPdf() below.
+    // pdfDocCache). `content.folder` is explicit for anything opened via
+    // PDF_GALLERY (multiple files sharing one folder — see
+    // renderPdfGallery/openFullPdf), matching GALLERY/VIDEO_GALLERY's own
+    // `folder` convention; single-PDF content (resume/writing's old shape)
+    // has no `folder` field and falls back to the original
+    // one-folder-per-document-id scheme (same relative URL openPdf() below
+    // still uses for the "Open PDF" button fallback).
     loadPdfDocument(content) {
 
         if (!pdfDocCache[content.id]) {
-            const url = `assets/documents/${content.id}/${content.file}`;
+            const folder = content.folder || `documents/${content.id}`;
+            const url = `assets/${folder}/${content.file}`;
             pdfDocCache[content.id] = pdfjsLib.getDocument({ url }).promise;
         }
 
