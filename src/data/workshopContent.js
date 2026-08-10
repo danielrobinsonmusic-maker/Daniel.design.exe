@@ -62,9 +62,21 @@ export const WORKSHOP_CONTENT = [
     },
     {
         id: "computer",
-        title: "Video Viewer",
-        type: ContentType.PLACEHOLDER,
-        content: "Prototype videos, built and coded — coming soon."
+        // No title — same reasoning as blueprints above, the videos fill
+        // the whole content area (see TakeoverFrameScene.renderVideoGallery).
+        type: ContentType.VIDEO_GALLERY,
+        // Relative to public/assets/ — capital "Computer" matches the
+        // actual folder name on disk (case-sensitive on the static host
+        // this deploys to, even though it works either way locally on a
+        // case-insensitive filesystem).
+        folder: "video/Computer",
+        files: [
+            "Meta Horizon New User Experience Prototype.mov",
+            "Netflix Pick 6 Prototype.mp4",
+            "Netflix Real-Time Voting Animation.mp4",
+            "Netflix Waiting Room Mini Game Prototype.mp4",
+            "Netflix Ways to Watch Prototype.mov"
+        ]
     },
     {
         id: "guitar",

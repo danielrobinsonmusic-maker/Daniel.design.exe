@@ -100,7 +100,6 @@ const YOUTUBE_CAPTION_GAP = 14;
 // alone, since a future PDF could in principle open through some other
 // frame and should keep the plain button in that case.
 const BOOK_PAGE_RENDER_SCALE = 3;
-const BOOK_PAGE_GUTTER = 14;
 
 // Shared prev/next arrow look — used both by the PDF book's page-spread
 // navigation (createNavArrow calls from renderBookPdf) and the GALLERY
@@ -126,6 +125,57 @@ const NAV_ARROW_TEXTURE_KEY = "takeover-nav-arrow";
 // room instead of overflowing into the border.
 const GALLERY_PADDING = 28;
 const GALLERY_CAPTION_GAP = 14;
+
+// A VIDEO_GALLERY content entry (see ContentType.VIDEO_GALLERY, the
+// Workshop's computer viewer — src/data/workshopContent.js) shows one
+// looping video at a time from content.files, browsed via the same
+// prev/next arrows as the image GALLERY and PDF book (createNavArrow),
+// contain-fit to use as much of the frame's screen area as possible
+// (upscaled if needed, unlike the image gallery — a small monitor-screen
+// content area and already-compressed source clips make upscaling the
+// common case here, not the exception). The filename appears over the
+// video and fades out after a beat rather than sitting there
+// permanently, so it doesn't stay in the way of the video itself.
+const VIDEO_GALLERY_LABEL_HOLD_MS = 2200;
+const VIDEO_GALLERY_LABEL_FADE_MS = 700;
+
+// Every non-PDF book content type (plain text/placeholder body copy, the
+// GALLERY "coming soon" fallback, and CARD_CAROUSEL's quote cards — see
+// ContentType and library.js) shares this one "flow" layout whenever it's
+// opened through the library-book frame (this.usesBookFlow, set in
+// buildScene) — an optional bold header (+ thin divider), then body text,
+// starting at the top of the LEFT page and continuing onto the top of the
+// RIGHT page if it doesn't fit on the left alone, like reading an actual
+// open book rather than one block centered across the whole spread. See
+// getBookPageZones for the left/right page rects this measures against,
+// and renderBookFlow/renderBookFlowScrollFallback for the two render
+// paths. BOOK_GUTTER is the small central gap around the book's spine —
+// used both here and by the PDF page renderer (renderBookSpread), so
+// every book content type splits the spread at the exact same point.
+//
+// Falling back to scrolling (see renderBookFlowScrollFallback) is meant
+// to be rare now that content has a full two-page spread instead of one
+// page-width column to fit in — it only triggers when body text doesn't
+// fit even after filling both pages, at which point it's shown as one
+// wide scrollable block spanning the gutter, with its own up/down arrows
+// mirroring AdventureBar's dialogue-panel scroll (createScrollArrow/
+// scrollBy/applyScroll there) — reimplemented rather than shared code,
+// since it's a different class/coordinate system. BOOK_FLOW_SCROLL_ARROW_
+// GUTTER is reserved on the right of the wrap width in that fallback
+// whether or not the arrows are actually visible, same reasoning as
+// AdventureBar's own ARROW_GUTTER_FRACTION: keeps text from reflowing
+// when the arrows appear/disappear.
+const BOOK_GUTTER = 14;
+const BOOK_FLOW_PADDING = 28;
+const BOOK_FLOW_HEADER_GAP = 10;
+const BOOK_FLOW_DIVIDER_GAP = 12;
+const BOOK_FLOW_SOURCE_GAP = 16;
+const BOOK_FLOW_SCROLL_ARROW_GUTTER = 36;
+const BOOK_FLOW_SCROLL_STEP_FRACTION = 0.55;
+const BOOK_HEADER_COLOR = "#5a3a1a";
+const BOOK_BODY_COLOR = "#2a1c10";
+const BOOK_SOURCE_COLOR = "#5a4a3a";
+const BOOK_DIVIDER_COLOR = 0xcbb896;
 
 // A book page rendered at its natural book-spread size (see
 // renderPdfPageIntoBox) is only a couple hundred pixels wide in this game's
@@ -203,6 +253,7 @@ export default class TakeoverFrameScene extends AdventureScene {
         this.frameKey = data.frameKey;
         this.content = data.content;
         this.zoomOverlay = null;
+        this.bookFlowObjects = [];
 
     }
 
@@ -227,6 +278,13 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         this.isBookPdf = this.content.type === ContentType.PDF && this.frameKey === "library-book";
 
+        // Every other book content type flows its own header/body (see
+        // renderBookFlow) starting at the top of the left page instead of
+        // using the generic spread-spanning title below — set here rather
+        // than inline in that title check so renderContent's own
+        // TEXT/PLACEHOLDER/GALLERY/CARD_CAROUSEL branches can check it too.
+        this.usesBookFlow = this.frameKey === "library-book" && !this.isBookPdf;
+
         this.setBackdrop(frame.textureKey, frame.nativeWidth, frame.nativeHeight);
 
         const { left, top, dispW, dispH } = this.backdropMetrics;
@@ -245,12 +303,11 @@ export default class TakeoverFrameScene extends AdventureScene {
             width: (x1 - x0) * dispW
         };
 
-        // Skipped for a paginated book PDF — the rendered page images
-        // already fill the content area edge to edge (see renderBookPdf),
-        // so a floating title here would just overlap the top of the left
-        // page rather than sit above it like it does for every other
-        // content type.
-        if (this.content.title && !this.isBookPdf) {
+        // Skipped for a paginated book PDF (the rendered page images
+        // already fill the content area edge to edge — see renderBookPdf)
+        // and for anything using the new book-flow layout (its header is
+        // part of the left-page flow instead — see renderBookFlow).
+        if (this.content.title && !this.isBookPdf && !this.usesBookFlow) {
 
             this.add.text(this.contentBounds.centerX, this.contentBounds.top, this.content.title, {
                 fontFamily: "monospace",
@@ -294,7 +351,11 @@ export default class TakeoverFrameScene extends AdventureScene {
             case ContentType.TEXT:
             case ContentType.CONTACT:
             case ContentType.PLACEHOLDER:
-                this.renderText(this.content.content);
+                if (this.usesBookFlow) {
+                    this.renderBookFlow({ header: this.content.title, body: this.content.content });
+                } else {
+                    this.renderText(this.content.content);
+                }
                 break;
 
             case ContentType.GALLERY:
@@ -311,6 +372,14 @@ export default class TakeoverFrameScene extends AdventureScene {
 
             case ContentType.VIDEO_PLAYLIST:
                 this.renderVideoPlaylist();
+                break;
+
+            case ContentType.VIDEO_GALLERY:
+                this.renderVideoGallery();
+                break;
+
+            case ContentType.CARD_CAROUSEL:
+                this.renderCardCarousel();
                 break;
 
             default:
@@ -477,6 +546,484 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
+    // One video at a time from content.files, navigated via the shared
+    // prev/next arrows (see createNavArrow) rather than autoplayed back to
+    // back like renderVideoPlaylist above. Arrows are created once here;
+    // renderVideoGalleryItem (called for the first video and again on
+    // every arrow click) handles loading/swapping the actual video.
+    renderVideoGallery() {
+
+        if (!this.content.files || !this.content.files.length) {
+            this.renderText("Video coming soon.");
+            return;
+        }
+
+        this.videoGalleryObjects = [];
+        this.videoGalleryLoadToken = 0;
+        this.videoGalleryLoadingText = null;
+        this.videoGalleryIndex = 0;
+        this.videoGalleryFiles = this.content.files;
+
+        this.prevArrow = this.createNavArrow("prev", () => this.turnVideoGallery(-1));
+        this.nextArrow = this.createNavArrow("next", () => this.turnVideoGallery(1));
+
+        this.renderVideoGalleryItem();
+
+    }
+
+    turnVideoGallery(delta) {
+        this.videoGalleryIndex += delta;
+        this.renderVideoGalleryItem();
+    }
+
+    // Loads (or reuses an already-cached video for) the current index and
+    // plays it looping, contain-fit to the frame's content area — same
+    // load-token guard against a slow load resolving after the user has
+    // already navigated further as the PDF book/image gallery use.
+    renderVideoGalleryItem() {
+
+        this.videoGalleryObjects.forEach((obj) => obj.destroy());
+        this.videoGalleryObjects = [];
+
+        if (this.videoGalleryLoadingText) {
+            this.videoGalleryLoadingText.destroy();
+            this.videoGalleryLoadingText = null;
+        }
+
+        const token = ++this.videoGalleryLoadToken;
+        const filename = this.videoGalleryFiles[this.videoGalleryIndex];
+        const key = `video-gallery-${this.content.id}-${filename}`;
+
+        const show = () => {
+            if (this.cancelled || token !== this.videoGalleryLoadToken) return;
+            this.displayVideoGalleryItem(key, filename);
+        };
+
+        if (this.cache.video.exists(key)) {
+            show();
+            return;
+        }
+
+        this.videoGalleryLoadingText = this.renderText("Loading video...");
+
+        const url = `assets/${this.content.folder}/${encodeURIComponent(filename)}`;
+
+        // Phaser's video loader picks a playable format by checking the
+        // URL's extension against a fixed whitelist (mp4/m4v/ogg/webm/
+        // vp9/hls) — ".mov" isn't in it, so a bare URL string here throws
+        // (getVideoURL returns null, and the loader crashes reading
+        // .type off it) even though these are our own H.264/AAC-encoded
+        // files (see the earlier ffmpeg compression pass) that the browser
+        // plays just fine. The {url, type} array form lets the actual
+        // codec type be declared explicitly instead of sniffed from the
+        // extension.
+        this.load.video(key, /\.mov$/i.test(filename) ? [{ url, type: "mp4" }] : url);
+        this.load.once("complete", () => {
+
+            if (token === this.videoGalleryLoadToken && this.videoGalleryLoadingText) {
+                this.videoGalleryLoadingText.destroy();
+                this.videoGalleryLoadingText = null;
+            }
+
+            show();
+
+        });
+        this.load.start();
+
+    }
+
+    // Contain-fit to use as much of the content area as possible (upscaled
+    // if needed — unlike the image gallery's deliberate no-upscale cap,
+    // see GALLERY_PADDING's comment, these clips are meant to fill the
+    // monitor screen regardless of their own native size). The filename
+    // appears centered over the video and fades out after a beat (see
+    // VIDEO_GALLERY_LABEL_*) rather than sitting there permanently.
+    displayVideoGalleryItem(key, filename) {
+
+        const { left, right, top, bottom, centerX } = this.contentBounds;
+        const maxWidth = right - left;
+        const maxHeight = bottom - top;
+        const centerY = top + (maxHeight / 2);
+
+        const video = this.add.video(centerX, centerY, key);
+        video.setDepth(1);
+        video.on("created", (vid) => {
+            const scale = Math.min(maxWidth / vid.width, maxHeight / vid.height);
+            vid.setDisplaySize(vid.width * scale, vid.height * scale);
+        });
+        video.setLoop(true);
+        video.play(false);
+
+        this.videoGalleryObjects.push(video);
+
+        const title = filename.replace(/\.[^./\\]+$/, "");
+
+        const label = this.add.text(centerX, centerY, title, {
+            fontFamily: "monospace",
+            fontSize: "20px",
+            fontStyle: "bold",
+            color: "#ffffff",
+            stroke: "#000000",
+            strokeThickness: 4,
+            align: "center",
+            wordWrap: { width: maxWidth * 0.86 }
+        }).setOrigin(0.5).setDepth(2);
+
+        this.tweens.add({
+            targets: label,
+            alpha: 0,
+            delay: VIDEO_GALLERY_LABEL_HOLD_MS,
+            duration: VIDEO_GALLERY_LABEL_FADE_MS,
+            ease: "Sine.easeIn"
+        });
+
+        this.videoGalleryObjects.push(label);
+
+        this.updateVideoGalleryArrows();
+
+    }
+
+    updateVideoGalleryArrows() {
+
+        const hasPrev = this.videoGalleryIndex > 0;
+        const hasNext = this.videoGalleryIndex < this.videoGalleryFiles.length - 1;
+
+        this.setNavArrowActive(this.prevArrow, hasPrev);
+        this.setNavArrowActive(this.nextArrow, hasNext);
+
+    }
+
+    // One quote/attribution card at a time from content.cards, browsed via
+    // the shared prev/next arrows (createNavArrow) — created once here.
+    // The actual card content (feature header, quote body, source byline)
+    // renders through the same renderBookFlow every other book content
+    // type uses (see the BOOK_FLOW_* class comment), just called fresh on
+    // every arrow click.
+    renderCardCarousel() {
+
+        if (!this.content.cards || !this.content.cards.length) {
+            this.renderText("Coming soon.");
+            return;
+        }
+
+        this.cardIndex = 0;
+        this.cardsData = this.content.cards;
+
+        this.prevArrow = this.createNavArrow("prev", () => this.turnCard(-1));
+        this.nextArrow = this.createNavArrow("next", () => this.turnCard(1));
+
+        this.renderCardItem();
+
+    }
+
+    turnCard(delta) {
+        this.cardIndex += delta;
+        this.renderCardItem();
+    }
+
+    renderCardItem() {
+
+        const card = this.cardsData[this.cardIndex];
+
+        this.renderBookFlow({ header: card.feature, body: card.quote, source: card.source });
+
+        this.updateCardArrows();
+
+    }
+
+    updateCardArrows() {
+
+        const hasPrev = this.cardIndex > 0;
+        const hasNext = this.cardIndex < this.cardsData.length - 1;
+
+        this.setNavArrowActive(this.prevArrow, hasPrev);
+        this.setNavArrowActive(this.nextArrow, hasNext);
+
+    }
+
+    // Shared layout for every non-PDF book content type (see the
+    // BOOK_FLOW_* class comment) — an optional bold header (+ divider),
+    // then body text, starting at the top of the left page and flowing
+    // onto the top of the right page if it doesn't fit on the left alone.
+    // `source`, if given (quote cards only), is right-aligned at the
+    // bottom of whichever page the body ends up landing on, like a byline
+    // — distinct from renderBookFlowScrollFallback's own copy of it,
+    // which instead sits inline after the body since there's only one
+    // wide column there.
+    //
+    // Measures by actually building the body Text object at the left
+    // page's wrap width first and reading its real wrapped-line count
+    // (Text.getWrappedText) rather than estimating from character count —
+    // exact regardless of font/kerning. If even a full left+right spread
+    // can't fit it all (rare, given a full spread's worth of room now
+    // instead of one column — see renderBookFlowScrollFallback), that
+    // method takes over entirely instead.
+    renderBookFlow({ header, body, source }) {
+
+        this.bookFlowObjects.forEach((obj) => obj.destroy());
+        this.bookFlowObjects = [];
+
+        const zones = this.getBookPageZones();
+        const pad = BOOK_FLOW_PADDING;
+
+        const leftInner = {
+            left: zones.left.left + pad,
+            right: zones.left.right - pad,
+            top: zones.left.top + pad,
+            bottom: zones.left.bottom - pad
+        };
+        const rightInner = {
+            left: zones.right.left + pad,
+            right: zones.right.right - pad,
+            top: zones.right.top + pad,
+            bottom: zones.right.bottom - pad
+        };
+
+        const wrapWidth = leftInner.right - leftInner.left;
+        const leftCenterX = (leftInner.left + leftInner.right) / 2;
+        const rightCenterX = (rightInner.left + rightInner.right) / 2;
+
+        let cursorY = leftInner.top;
+
+        if (header) {
+
+            const headerText = this.add.text(leftCenterX, cursorY, header, {
+                fontFamily: "monospace",
+                fontSize: "20px",
+                fontStyle: "bold",
+                color: BOOK_HEADER_COLOR,
+                align: "center",
+                wordWrap: { width: wrapWidth }
+            }).setOrigin(0.5, 0);
+            cursorY += headerText.height + BOOK_FLOW_HEADER_GAP;
+
+            const divider = this.add.rectangle(leftCenterX, cursorY, wrapWidth * 0.5, 2, BOOK_DIVIDER_COLOR);
+            cursorY += BOOK_FLOW_DIVIDER_GAP;
+
+            this.bookFlowObjects.push(headerText, divider);
+
+        }
+
+        const leftBodyAvailable = leftInner.bottom - cursorY;
+
+        // Built once at the left page's width — reused as-is if
+        // everything fits on the left, or re-set to just its own slice of
+        // lines below if it needs to continue onto the right page.
+        const bodyText = this.add.text(leftCenterX, cursorY, body, {
+            fontFamily: "monospace",
+            fontSize: "16px",
+            fontStyle: source ? "italic" : "normal",
+            color: BOOK_BODY_COLOR,
+            align: "center",
+            wordWrap: { width: wrapWidth },
+            lineSpacing: 4
+        }).setOrigin(0.5, 0);
+        this.bookFlowObjects.push(bodyText);
+
+        let landingRight = leftInner.right;
+        let landingBottom;
+
+        if (bodyText.height <= leftBodyAvailable) {
+
+            // Fits on the left page alone — right page stays untouched.
+            landingBottom = cursorY + bodyText.height;
+
+        } else {
+
+            const lines = bodyText.getWrappedText(body);
+            const perLine = bodyText.height / lines.length;
+            const leftLineCount = Math.max(1, Math.floor(leftBodyAvailable / perLine));
+
+            const leftLines = lines.slice(0, leftLineCount);
+            const rightLines = lines.slice(leftLineCount);
+
+            const rightAvailable = rightInner.bottom - rightInner.top;
+            const rightLineCapacity = Math.max(1, Math.floor(rightAvailable / perLine));
+
+            if (rightLines.length > rightLineCapacity) {
+
+                // Doesn't fit even across both pages — tear down whatever
+                // of this attempt got built so far (header/divider/left
+                // bodyText) and hand off entirely to the scrollable
+                // single-column fallback, which builds everything fresh.
+                this.bookFlowObjects.forEach((obj) => obj.destroy());
+                this.bookFlowObjects = [];
+                this.renderBookFlowScrollFallback({ header, body, source });
+                return;
+
+            }
+
+            bodyText.setText(leftLines.join("\n"));
+
+            const rightBodyText = this.add.text(rightCenterX, rightInner.top, rightLines.join("\n"), {
+                fontFamily: "monospace",
+                fontSize: "16px",
+                fontStyle: source ? "italic" : "normal",
+                color: BOOK_BODY_COLOR,
+                align: "center",
+                wordWrap: { width: wrapWidth },
+                lineSpacing: 4
+            }).setOrigin(0.5, 0);
+            this.bookFlowObjects.push(rightBodyText);
+
+            landingRight = rightInner.right;
+            landingBottom = rightInner.top + rightBodyText.height;
+
+        }
+
+        if (source) {
+
+            const sourceText = this.add.text(landingRight, landingBottom + BOOK_FLOW_SOURCE_GAP, `— ${source}`, {
+                fontFamily: "monospace",
+                fontSize: "14px",
+                color: BOOK_SOURCE_COLOR
+            }).setOrigin(1, 0);
+            this.bookFlowObjects.push(sourceText);
+
+        }
+
+    }
+
+    // Rare fallback for renderBookFlow — body text that doesn't fit even
+    // across a full left+right spread renders as one wide scrollable
+    // column spanning the gutter instead, with its own up/down arrows
+    // mirroring AdventureBar's dialogue-panel scroll (createScrollArrow/
+    // scrollBy/applyScroll there — reimplemented rather than shared code,
+    // since it's a different class/coordinate system). `source` sits
+    // inline right-aligned after the body here, rather than anchored to a
+    // specific page's bottom edge like renderBookFlow's own copy does,
+    // since there's only the one wide column.
+    renderBookFlowScrollFallback({ header, body, source }) {
+
+        const { left, right, top, bottom, centerX } = this.contentBounds;
+        const pad = BOOK_FLOW_PADDING;
+
+        const viewportLeft = left + pad;
+        const viewportRight = right - pad;
+        const viewportTop = top + pad;
+        const viewportBottom = bottom - pad;
+        const viewportWidth = viewportRight - viewportLeft;
+        const viewportHeight = viewportBottom - viewportTop;
+
+        const textX = centerX - (BOOK_FLOW_SCROLL_ARROW_GUTTER / 2);
+        const wrapWidth = viewportWidth - BOOK_FLOW_SCROLL_ARROW_GUTTER;
+
+        const maskGraphics = this.make.graphics({}, false);
+        maskGraphics.fillStyle(0xffffff);
+        maskGraphics.fillRect(viewportLeft, viewportTop, viewportWidth, viewportHeight);
+
+        const layer = this.add.container(0, 0);
+        layer.setMask(maskGraphics.createGeometryMask());
+        this.bookFlowTextLayer = layer;
+
+        let cursorY = viewportTop;
+
+        if (header) {
+
+            const headerText = this.add.text(textX, cursorY, header, {
+                fontFamily: "monospace",
+                fontSize: "20px",
+                fontStyle: "bold",
+                color: BOOK_HEADER_COLOR,
+                align: "center",
+                wordWrap: { width: wrapWidth }
+            }).setOrigin(0.5, 0);
+            layer.add(headerText);
+            cursorY += headerText.height + BOOK_FLOW_HEADER_GAP;
+
+            const divider = this.add.rectangle(textX, cursorY, wrapWidth * 0.5, 2, BOOK_DIVIDER_COLOR);
+            layer.add(divider);
+            cursorY += BOOK_FLOW_DIVIDER_GAP;
+
+        }
+
+        const bodyText = this.add.text(textX, cursorY, body, {
+            fontFamily: "monospace",
+            fontSize: "16px",
+            fontStyle: source ? "italic" : "normal",
+            color: BOOK_BODY_COLOR,
+            align: "center",
+            wordWrap: { width: wrapWidth },
+            lineSpacing: 4
+        }).setOrigin(0.5, 0);
+        layer.add(bodyText);
+        cursorY += bodyText.height;
+
+        if (source) {
+
+            cursorY += BOOK_FLOW_SOURCE_GAP;
+
+            const sourceText = this.add.text(textX + (wrapWidth / 2), cursorY, `— ${source}`, {
+                fontFamily: "monospace",
+                fontSize: "14px",
+                color: BOOK_SOURCE_COLOR
+            }).setOrigin(1, 0);
+            layer.add(sourceText);
+            cursorY += sourceText.height;
+
+        }
+
+        this.bookFlowScrollMax = Math.max(0, (cursorY - viewportTop) - viewportHeight);
+        this.bookFlowScrollOffset = 0;
+        this.bookFlowViewportHeight = viewportHeight;
+
+        const arrowX = viewportRight - (BOOK_FLOW_SCROLL_ARROW_GUTTER / 2);
+        this.bookFlowScrollUpArrow = this.createBookScrollArrow(arrowX, viewportTop + 10, -1);
+        this.bookFlowScrollDownArrow = this.createBookScrollArrow(arrowX, viewportBottom - 10, 1);
+
+        this.applyBookFlowScroll();
+
+        this.bookFlowObjects.push(layer, maskGraphics, this.bookFlowScrollUpArrow, this.bookFlowScrollDownArrow);
+
+    }
+
+    // Simple triangle scroll button mirroring AdventureBar's own
+    // createScrollArrow/scrollBy/applyScroll (dark ink color rather than
+    // AdventureBar's white/black, since this sits on the book's light
+    // parchment background instead of the dialogue panel's own art) —
+    // hidden by default; applyBookFlowScroll reveals whichever end still
+    // has room to scroll toward. No click sfx, matching AdventureBar's
+    // own scroll arrows (which don't have one either).
+    createBookScrollArrow(x, y, direction) {
+
+        const size = 14;
+
+        const points = direction === -1
+            ? [size / 2, 0, 0, size, size, size]
+            : [size / 2, size, 0, 0, size, 0];
+
+        const arrow = this.add.triangle(x, y, ...points, 0x2a1c10);
+        arrow.setDepth(3);
+        arrow.setInteractive({ useHandCursor: false });
+        arrow.setVisible(false);
+
+        arrow.on("pointerover", () => arrow.setFillStyle(0xb08d57));
+        arrow.on("pointerout", () => arrow.setFillStyle(0x2a1c10));
+        arrow.on("pointerdown", () => this.scrollBookFlowBy(direction));
+
+        return arrow;
+
+    }
+
+    scrollBookFlowBy(direction) {
+
+        if (this.bookFlowScrollMax <= 0) return;
+
+        const step = this.bookFlowViewportHeight * BOOK_FLOW_SCROLL_STEP_FRACTION;
+
+        this.bookFlowScrollOffset = Math.min(Math.max(this.bookFlowScrollOffset + (direction * step), 0), this.bookFlowScrollMax);
+        this.applyBookFlowScroll();
+
+    }
+
+    applyBookFlowScroll() {
+
+        this.bookFlowTextLayer.y = -this.bookFlowScrollOffset;
+        this.bookFlowScrollUpArrow.setVisible(this.bookFlowScrollOffset > 0);
+        this.bookFlowScrollDownArrow.setVisible(this.bookFlowScrollOffset < this.bookFlowScrollMax);
+
+    }
+
     // Kicks off loading the PDF (from cache if this book's already been
     // opened this session — see loadPdfDocument), then renders the first
     // spread once it resolves. `cancelled` guards every step after an
@@ -518,6 +1065,23 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
+    // Splits the library-book frame's content area into a left-page and
+    // right-page rect around a small central gutter (the book's spine) —
+    // shared geometry every book content type (PDF page images,
+    // renderBookFlow's flowing text/cards) renders into, so every book's
+    // left/right page boundaries line up exactly regardless of what's
+    // actually inside it.
+    getBookPageZones() {
+
+        const { left, right, top, bottom, centerX } = this.contentBounds;
+
+        return {
+            left: { left, right: centerX - BOOK_GUTTER, top, bottom },
+            right: { left: centerX + BOOK_GUTTER, right, top, bottom }
+        };
+
+    }
+
     // One pdfjs loading task per document id, cached at module scope (see
     // pdfDocCache) — same relative URL scheme as openPdf() below.
     loadPdfDocument(content) {
@@ -544,10 +1108,7 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         const token = ++this.renderToken;
 
-        const { left, right, top, bottom, centerX } = this.contentBounds;
-
-        const leftBox = { left, right: centerX - BOOK_PAGE_GUTTER, top, bottom };
-        const rightBox = { left: centerX + BOOK_PAGE_GUTTER, right, top, bottom };
+        const { left: leftBox, right: rightBox } = this.getBookPageZones();
 
         const leftPageNum = (this.spreadIndex * 2) + 1;
         const rightPageNum = leftPageNum + 1;
@@ -805,7 +1366,11 @@ export default class TakeoverFrameScene extends AdventureScene {
     renderGallery() {
 
         if (!this.content.files || !this.content.files.length) {
-            this.renderText(`${this.content.title} coming soon.`);
+            if (this.usesBookFlow) {
+                this.renderBookFlow({ header: this.content.title, body: "Coming soon." });
+            } else {
+                this.renderText(`${this.content.title} coming soon.`);
+            }
             return;
         }
 
