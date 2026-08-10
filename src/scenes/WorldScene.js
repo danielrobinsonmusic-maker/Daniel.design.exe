@@ -136,6 +136,24 @@ export default class WorldScene extends Phaser.Scene {
             this.createObstacle(x * TILE_SIZE, y * TILE_SIZE);
         });
 
+        // fountain: unlike trees/bushes/decor, its visual footprint is a
+        // wide round basin (roughly 4-5 tiles across at this sprite's
+        // scale — see the fountain sprite setup above), not a narrow trunk
+        // rising from one tile, so a single-tile obstacle would leave most
+        // of the visible fountain walkable. Blocks a 4x4 block centered on
+        // FOUNTAIN_TILE instead (a 3x3 block still let the player clip the
+        // basin's edge — confirmed against the physics debug overlay) —
+        // an approximation (the obstacle grid is square tiles, the
+        // fountain is round) rather than a pixel-exact match, same spirit
+        // as every other tile-grid collision here. Can't center a 4-tile
+        // block exactly on one tile index, so it's biased one tile
+        // further south/east rather than north/west.
+        for (let fy = FOUNTAIN_TILE.y - 1; fy <= FOUNTAIN_TILE.y + 2; fy++) {
+            for (let fx = FOUNTAIN_TILE.x - 1; fx <= FOUNTAIN_TILE.x + 2; fx++) {
+                this.createObstacle(fx * TILE_SIZE, fy * TILE_SIZE);
+            }
+        }
+
         // buildings: solid across the whole footprint except the door tile
         BUILDINGS.forEach((building) => {
             for (let by = building.y; by < building.y + building.height; by++) {
