@@ -832,9 +832,38 @@ export default class TakeoverFrameScene extends AdventureScene {
         image.setDepth(1);
 
         const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
-        image.setDisplaySize(image.width * scale, image.height * scale);
+        const dispW = image.width * scale;
+        const dispH = image.height * scale;
+        image.setDisplaySize(dispW, dispH);
 
         this.bookFlowObjects.push(image);
+
+        // Clicking opens it full-size — same click-to-zoom mechanism
+        // (magnifying-glass cursor on hover, DOM-overlay zoom on click) a
+        // resume page's own hitbox uses (renderPdfPageIntoBox/
+        // openPageZoom), reused as-is here.
+        const { left: bLeft, top: bTop, dispW: bDispW, dispH: bDispH } = this.backdropMetrics;
+        const imgLeft = centerX - (dispW / 2);
+        const imgTop = centerY - (dispH / 2);
+
+        const hitZone = this.addHitbox({
+            xRange: [(imgLeft - bLeft) / bDispW, ((imgLeft + dispW) - bLeft) / bDispW],
+            yRange: [(imgTop - bTop) / bDispH, ((imgTop + dispH) - bTop) / bDispH],
+            verb: "Zoom",
+            onClick: () => this.openPageZoom(key)
+        });
+
+        // Same pointerout guard as renderPdfPageIntoBox's own hitbox —
+        // the zoom overlay's backdrop covers this same zone once open, so
+        // the next pointer move fires a stray pointerout that would
+        // otherwise incorrectly revert the cursor away from the zoom icon
+        // while still legitimately zoomed in.
+        hitZone.on("pointerover", () => this.cursor.setZooming(true));
+        hitZone.on("pointerout", () => {
+            if (!this.zoomOverlay) this.cursor.setZooming(false);
+        });
+
+        this.bookFlowObjects.push(hitZone);
 
     }
 
@@ -1570,20 +1599,50 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
-    // Full-size reading view for one page — a Phaser DOM Element (see
-    // game.js's dom.createContainer config, the same mechanism the
-    // Workshop's YouTube embed uses) rather than another Phaser Image, so
-    // the page renders at the browser's own native resolution instead of
-    // being boxed into this game's fixed 960x540 internal canvas. Reuses
-    // the exact canvas already rendered for the in-book thumbnail (via
-    // Texture.getSourceImage()) rather than re-rendering the PDF page at a
-    // different resolution — that canvas is already high-res (see
-    // BOOK_PAGE_RENDER_SCALE), just displayed too small in-book to read.
+    // Full-size reading view for one page (or, since this is shared by
+    // renderCarouselImage too, one News-and-Featured-Work photo) — a
+    // Phaser DOM Element (see game.js's dom.createContainer config, the
+    // same mechanism the Workshop's YouTube embed uses) rather than
+    // another Phaser Image, so it renders at the browser's own native
+    // resolution instead of being boxed into this game's fixed 960x540
+    // internal canvas. Reuses whatever's already backing the texture (via
+    // Texture.getSourceImage()) rather than reloading/re-rendering at a
+    // different resolution — a PDF page's source is a canvas rendered at
+    // BOOK_PAGE_RENDER_SCALE, a carousel photo's is the already-loaded
+    // HTMLImageElement itself; either way it's already high-res, just
+    // displayed too small in-book to read/see clearly.
     openPageZoom(textureKey) {
 
         if (this.zoomOverlay) return;
 
-        const canvas = this.textures.get(textureKey).getSourceImage();
+        const source = this.textures.get(textureKey).getSourceImage();
+        const srcWidth = source.naturalWidth || source.width;
+        const srcHeight = source.naturalHeight || source.height;
+
+        // Always re-encode through a canvas rather than reusing
+        // source.src directly for a regular loaded image (carousel
+        // photos) — Phaser's image loader backs this.load.image()
+        // textures with a blob: URL that it can revoke once no longer
+        // needed internally, which still displays fine as the texture's
+        // own already-decoded source but 404s (confirmed empirically:
+        // net::ERR_FILE_NOT_FOUND) if a brand-new <img> element tries to
+        // fetch that same URL again here. Drawing the already-decoded
+        // source into a fresh canvas sidesteps that entirely, since it
+        // reads pixel data directly rather than re-fetching a URL. A PDF
+        // page's source is already a canvas (rendered at
+        // BOOK_PAGE_RENDER_SCALE) with no such problem, but going through
+        // the same path for both keeps this one simple rather than
+        // branching on source type.
+        const canvas = typeof source.toDataURL === "function" ? source : (() => {
+            const c = document.createElement("canvas");
+            c.width = srcWidth;
+            c.height = srcHeight;
+            c.getContext("2d").drawImage(source, 0, 0);
+            return c;
+        })();
+
+        const srcUrl = canvas.toDataURL();
+
         const { width, height } = this.scale;
 
         const backdrop = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, BOOK_ZOOM_BACKDROP_ALPHA);
@@ -1593,12 +1652,12 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         const maxW = width * BOOK_ZOOM_MAX_WIDTH_FRACTION;
         const maxH = height * BOOK_ZOOM_MAX_HEIGHT_FRACTION;
-        const scale = Math.min(maxW / canvas.width, maxH / canvas.height);
+        const scale = Math.min(maxW / srcWidth, maxH / srcHeight);
 
         const img = document.createElement("img");
-        img.src = canvas.toDataURL();
-        img.style.width = `${Math.round(canvas.width * scale)}px`;
-        img.style.height = `${Math.round(canvas.height * scale)}px`;
+        img.src = srcUrl;
+        img.style.width = `${Math.round(srcWidth * scale)}px`;
+        img.style.height = `${Math.round(srcHeight * scale)}px`;
         img.style.boxShadow = "0 12px 48px rgba(0,0,0,0.65)";
         // No CSS cursor override here (a plain DOM <img> would otherwise
         // show the real OS pointer over it, fighting with our own hidden-
