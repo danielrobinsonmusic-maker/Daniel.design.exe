@@ -805,11 +805,9 @@ export default class TakeoverFrameScene extends AdventureScene {
         }
 
         const leftBodyAvailable = leftInner.bottom - cursorY;
+        const rightBodyAvailable = rightInner.bottom - rightInner.top;
 
-        // Built once at the left page's width — reused as-is if
-        // everything fits on the left, or re-set to just its own slice of
-        // lines below if it needs to continue onto the right page.
-        const bodyText = this.add.text(leftCenterX, cursorY, body, {
+        const bodyStyle = {
             fontFamily: "monospace",
             fontSize: "16px",
             fontStyle: source ? "italic" : "normal",
@@ -817,35 +815,56 @@ export default class TakeoverFrameScene extends AdventureScene {
             align: "center",
             wordWrap: { width: wrapWidth },
             lineSpacing: 4
-        }).setOrigin(0.5, 0);
-        this.bookFlowObjects.push(bodyText);
+        };
+
+        // Probes real rendered heights via repeated setText()+.height
+        // reads rather than estimating from an average line height
+        // (lines.length / totalHeight) — different browsers/OSes can
+        // substitute a different actual font for the generic "monospace"
+        // family, which shifts exact wrapped line counts just enough to
+        // matter right at a page boundary. Starts at the full line count
+        // (the common case — everything fits on the left alone — exits
+        // after a single check) and backs off one line at a time until
+        // it fits.
+        const probe = this.add.text(leftCenterX, cursorY, body, bodyStyle).setOrigin(0.5, 0);
+        const lines = probe.getWrappedText(body);
+
+        let leftLineCount = lines.length;
+        probe.setText(lines.slice(0, leftLineCount).join("\n"));
+
+        while (leftLineCount > 1 && probe.height > leftBodyAvailable) {
+            leftLineCount--;
+            probe.setText(lines.slice(0, leftLineCount).join("\n"));
+        }
+
+        this.bookFlowObjects.push(probe);
 
         let landingRight = leftInner.right;
         let landingBottom;
 
-        if (bodyText.height <= leftBodyAvailable) {
+        if (leftLineCount >= lines.length && probe.height <= leftBodyAvailable) {
 
             // Fits on the left page alone — right page stays untouched.
-            landingBottom = cursorY + bodyText.height;
+            // (probe already displays the full body text at this point.)
+            landingBottom = cursorY + probe.height;
 
         } else {
-
-            const lines = bodyText.getWrappedText(body);
-            const perLine = bodyText.height / lines.length;
-            const leftLineCount = Math.max(1, Math.floor(leftBodyAvailable / perLine));
 
             const leftLines = lines.slice(0, leftLineCount);
             const rightLines = lines.slice(leftLineCount);
 
-            const rightAvailable = rightInner.bottom - rightInner.top;
-            const rightLineCapacity = Math.max(1, Math.floor(rightAvailable / perLine));
+            probe.setText(leftLines.join("\n"));
 
-            if (rightLines.length > rightLineCapacity) {
+            const rightBodyText = this.add.text(rightCenterX, rightInner.top, rightLines.join("\n"), bodyStyle).setOrigin(0.5, 0);
+
+            if (rightBodyText.height > rightBodyAvailable) {
 
                 // Doesn't fit even across both pages — tear down whatever
                 // of this attempt got built so far (header/divider/left
-                // bodyText) and hand off entirely to the scrollable
-                // single-column fallback, which builds everything fresh.
+                // probe/right attempt) and hand off entirely to the
+                // scrollable single-column fallback, which builds
+                // everything fresh.
+                rightBodyText.destroy();
                 this.bookFlowObjects.forEach((obj) => obj.destroy());
                 this.bookFlowObjects = [];
                 this.renderBookFlowScrollFallback({ header, body, source });
@@ -853,17 +872,6 @@ export default class TakeoverFrameScene extends AdventureScene {
 
             }
 
-            bodyText.setText(leftLines.join("\n"));
-
-            const rightBodyText = this.add.text(rightCenterX, rightInner.top, rightLines.join("\n"), {
-                fontFamily: "monospace",
-                fontSize: "16px",
-                fontStyle: source ? "italic" : "normal",
-                color: BOOK_BODY_COLOR,
-                align: "center",
-                wordWrap: { width: wrapWidth },
-                lineSpacing: 4
-            }).setOrigin(0.5, 0);
             this.bookFlowObjects.push(rightBodyText);
 
             landingRight = rightInner.right;
