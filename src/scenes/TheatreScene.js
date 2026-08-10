@@ -1,6 +1,6 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { MOVIES } from "../data/movies";
-import { recordCatInteraction } from "../managers/CatAchievement";
+import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
@@ -23,6 +23,14 @@ const POSTERS = [
 ];
 const POSTER_Y_RANGE = [0.12, 0.52];
 
+// nfl-squidgame has no `title` in data/movies.js (deliberately — see that
+// file's own comment, a title there would shrink the video player) but
+// the poster art itself is painted with "NFL X SQUIDGAME", so the hover
+// verb can still show a real title without touching that data shape.
+const FALLBACK_MOVIE_TITLES = {
+    "nfl-squidgame": "NFL x Squidgame"
+};
+
 export default class TheatreScene extends AdventureScene {
 
     constructor() {
@@ -40,24 +48,28 @@ export default class TheatreScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.24, 0.38],
             yRange: [0.27, 0.58],
-            verb: "Talk",
+            verb: "Talk to Ticket Taker",
             onClick: () => this.fadeTo("TheatreAttendantCloseup")
         });
 
         this.addHitbox({
             xRange: [0.45, 0.53],
             yRange: [0.46, 0.57],
-            verb: "Pet",
+            verb: getCatPetVerb(),
             clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });
 
         POSTERS.forEach((poster) => {
 
+            const movie = MOVIES.find((m) => m.id === poster.movieId);
+            const title = (movie && movie.title) || FALLBACK_MOVIE_TITLES[poster.movieId];
+            const verb = title ? `Watch ${title}` : "Watch Movie";
+
             this.addHitbox({
                 xRange: poster.xRange,
                 yRange: POSTER_Y_RANGE,
-                verb: "Watch Movie",
+                verb,
                 onClick: () => this.watchMovie(poster.movieId)
             });
 

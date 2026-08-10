@@ -1,5 +1,5 @@
 import AdventureScene from "../adventure/AdventureScene";
-import { recordCatInteraction } from "../managers/CatAchievement";
+import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
@@ -37,14 +37,14 @@ export default class LibraryScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.09, 0.27],
             yRange: [0.25, 0.70],
-            verb: "Talk",
+            verb: "Talk to Librarian",
             onClick: () => this.fadeTo("LibrarianCloseup")
         });
 
         this.addHitbox({
             xRange: [0.28, 0.43],
             yRange: [0.40, 0.62],
-            verb: "Pet",
+            verb: getCatPetVerb(),
             clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });
@@ -52,7 +52,7 @@ export default class LibraryScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.62, 0.92],
             yRange: [0.08, 0.78],
-            verb: "Browse",
+            verb: "Browse Bookshelf",
             onClick: () => this.fadeTo("BookshelfCloseup")
         });
 

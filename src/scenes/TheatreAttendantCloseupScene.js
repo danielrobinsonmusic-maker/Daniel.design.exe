@@ -20,7 +20,7 @@ import { ATTENDANT_GREETING, ATTENDANT_QUESTIONS, ATTENDANT_EXHAUSTED } from "..
 const NATIVE_WIDTH = 1672;
 const NATIVE_HEIGHT = 941;
 const BACKDROP_KEY = "theatre-attendant-closeup";
-const ATTENDANT_NAME = "Attendant";
+const ATTENDANT_NAME = "Ticket Taker";
 
 export default class TheatreAttendantCloseupScene extends AdventureScene {
 

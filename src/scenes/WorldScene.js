@@ -44,6 +44,40 @@ const EDISON_ZONE = { x: 42, y: 1 + NORTH_BUFFER_ROWS, name: "Edison" };
 const EDISON_LINE_DURATION = 4000;
 const EDISON_LINE = "Hi{{name}}. Let's meet in the Japanese garden beyond the gate.";
 
+// Ed's House sits at tile (66, 27 + NORTH_BUFFER_ROWS) — see
+// WorldObjects.js's DECOR_RAW entry for the placement reasoning (same
+// math, converted to post-shift coordinates here). The interaction zone
+// is one tile south of it (in the open ground in front, not on the
+// obstacle tile itself) so the player can actually stand close enough to
+// trigger it.
+const CATHOUSE_ZONE = { x: 66, y: 28 + NORTH_BUFFER_ROWS, name: "Cathouse" };
+const CATHOUSE_THINKING_DURATION = 900;
+const CATHOUSE_LINE_DURATION = 2800;
+const CATHOUSE_LINE = "I wonder where that cat went...";
+
+// Murray sits at tile (7.5, 1 + NORTH_BUFFER_ROWS) — centered between the
+// two nearest bushes, see WorldObjects.js's DECOR_RAW entry for the
+// placement reasoning (same math, converted to post-shift coordinates
+// here). The interaction zone is one tile south of him, on the nearest
+// whole tile (8, not 7.5 — zones are checked against the player's integer
+// tile position anyway), in the open walkable side of the gap he sits in.
+const MURRAY_ZONE = { x: 8, y: 2 + NORTH_BUFFER_ROWS, name: "Murray" };
+const MURRAY_MET_FLAG = "murray.met";
+const MURRAY_THINKING_DURATION = 900;
+const MURRAY_LINE_DURATION = 3400;
+// Chosen fresh (real randomness, not the deterministic hash convention
+// used for tile scatter/visuals elsewhere) each time E is pressed — this
+// is flavor dialogue variety triggered by an explicit player action, not
+// something that needs to render identically across scene re-creates the
+// way trees/paths do.
+const MURRAY_LINES = [
+    "He said he's looking for someone named Guybrush...",
+    "He says LeChuck owes him a few pieces o' eight...",
+    "He told me to ask him about Loom...",
+    "He said Stan sold his boat...",
+    "He said he likes this game better than Monkey Island 6..."
+];
+
 // Fountain ambience — only while the player's own tile is within the town
 // square rectangle (TOWN_SQUARE_BOUNDS covers the whole plaza the
 // fountain sits at the center of, not just the fountain's own tile), so
@@ -220,7 +254,9 @@ export default class WorldScene extends Phaser.Scene {
             { x: 60, y: 28 + NORTH_BUFFER_ROWS, name: "Workshop" },
             { x: 16, y: 11 + NORTH_BUFFER_ROWS, name: "Theatre" },
             { x: 58, y: 11 + NORTH_BUFFER_ROWS, name: "Café" },
-            { x: 37, y: 1 + NORTH_BUFFER_ROWS, name: "Woods" }
+            { x: 37, y: 1 + NORTH_BUFFER_ROWS, name: "Woods" },
+            CATHOUSE_ZONE,
+            MURRAY_ZONE
         ];
 
         // Edison's zone only gets added once the achievement is already
@@ -237,6 +273,20 @@ export default class WorldScene extends Phaser.Scene {
         // player through a 3-stage prompt instead of a single "Press E to
         // Open" — see updateWoodsInteraction below.
         this.woodsState = "initial"; // "initial" -> "thinking" -> "ready"
+
+        // Cathouse: same "..." thinking beat as the Woods, but the third
+        // stage is a one-off flavor line that reverts back to "idle" on
+        // its own (like Edison's line below) rather than becoming a new
+        // actionable prompt — see updateCathouseInteraction.
+        this.cathouseState = "idle"; // "idle" -> "thinking" -> "line" -> "idle"
+
+        // Murray: same 3-state shape as the Cathouse above, but the idle
+        // prompt itself changes once MURRAY_MET_FLAG is set (an unnamed
+        // "demonic skull" the first time, "Murray" by name ever after —
+        // see updateMurrayInteraction), and the payoff line is picked
+        // fresh from MURRAY_LINES on every interaction instead of being
+        // fixed.
+        this.murrayState = "idle"; // "idle" -> "thinking" -> "line" -> "idle"
 
         // Edison: false until E is pressed once in range, then shows the
         // line instead of the "Press E to talk" prompt for a beat — same
@@ -351,6 +401,16 @@ updateInteractions() {
         return;
     }
 
+    if (target.name === "Cathouse") {
+        this.updateCathouseInteraction(hud);
+        return;
+    }
+
+    if (target.name === "Murray") {
+        this.updateMurrayInteraction(hud);
+        return;
+    }
+
     hud.showInteraction(target.name);
 
     if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
@@ -455,6 +515,109 @@ updateEdisonInteraction(hud) {
         this.time.delayedCall(EDISON_LINE_DURATION, () => {
             this.edisonLineActive = false;
         });
+
+    }
+
+}
+
+// Same "..." thinking beat as the Woods (see updateWoodsInteraction)
+// before the payoff line appears, but the payoff here is a one-off flavor
+// line rather than a new actionable prompt — it reverts back to "idle" on
+// its own after CATHOUSE_LINE_DURATION (same "shows, then reverts after a
+// beat" convention as updateEdisonInteraction/every building's petCat()),
+// so approaching again replays the same "..." -> line sequence rather
+// than staying stuck on the line or requiring a second press to do
+// anything.
+updateCathouseInteraction(hud) {
+
+    const justPressed = Phaser.Input.Keyboard.JustDown(this.interactKey);
+
+    if (this.cathouseState === "idle") {
+
+        hud.showInteraction("Cathouse", "Press [E] to look at the cathouse.");
+
+        if (justPressed) {
+
+            this.cathouseState = "thinking";
+            hud.showInteraction("Cathouse", "...");
+
+            this.time.delayedCall(CATHOUSE_THINKING_DURATION, () => {
+                if (this.cathouseState !== "thinking") return;
+
+                this.cathouseState = "line";
+
+                this.time.delayedCall(CATHOUSE_LINE_DURATION, () => {
+                    if (this.cathouseState === "line") {
+                        this.cathouseState = "idle";
+                    }
+                });
+
+            });
+
+        }
+
+    } else if (this.cathouseState === "thinking") {
+
+        hud.showInteraction("Cathouse", "...");
+
+    } else if (this.cathouseState === "line") {
+
+        hud.showInteraction("Cathouse", CATHOUSE_LINE);
+
+    }
+
+}
+
+// Same 3-state shape as updateCathouseInteraction above, plus one extra
+// wrinkle: the idle prompt's own text depends on MURRAY_MET_FLAG, checked
+// fresh on every call rather than cached — flipping mid-session the
+// instant the player first presses E (see below), not just on the next
+// scene re-create.
+updateMurrayInteraction(hud) {
+
+    const justPressed = Phaser.Input.Keyboard.JustDown(this.interactKey);
+    const met = SaveManager.hasFlag(MURRAY_MET_FLAG);
+
+    if (this.murrayState === "idle") {
+
+        hud.showInteraction(
+            met ? "Murray" : "???",
+            met ? "Press [E] to talk to Murray." : "Press [E] to talk to demonic skull."
+        );
+
+        if (justPressed) {
+
+            // Set immediately (not after the line finishes) so this same
+            // first interaction's own "..." and payoff line already read
+            // "Murray" rather than waiting for a second approach.
+            SaveManager.setFlag(MURRAY_MET_FLAG);
+
+            this.murrayState = "thinking";
+            hud.showInteraction("Murray", "...");
+
+            this.time.delayedCall(MURRAY_THINKING_DURATION, () => {
+                if (this.murrayState !== "thinking") return;
+
+                this.murrayState = "line";
+                this.murrayLine = Phaser.Utils.Array.GetRandom(MURRAY_LINES);
+
+                this.time.delayedCall(MURRAY_LINE_DURATION, () => {
+                    if (this.murrayState === "line") {
+                        this.murrayState = "idle";
+                    }
+                });
+
+            });
+
+        }
+
+    } else if (this.murrayState === "thinking") {
+
+        hud.showInteraction("Murray", "...");
+
+    } else if (this.murrayState === "line") {
+
+        hud.showInteraction("Murray", this.murrayLine);
 
     }
 

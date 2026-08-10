@@ -41,7 +41,7 @@ export default class BookshelfCloseupScene extends AdventureScene {
             this.addHitbox({
                 xRange: spine.xRange,
                 yRange: spine.yRange,
-                verb: "Open",
+                verb: `Open ${spine.label}`,
                 onClick: () => this.openBook(spine)
             });
 

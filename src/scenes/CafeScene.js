@@ -1,5 +1,5 @@
 import AdventureScene from "../adventure/AdventureScene";
-import { recordCatInteraction } from "../managers/CatAchievement";
+import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
@@ -30,14 +30,14 @@ export default class CafeScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.71, 0.82],
             yRange: [0.24, 0.58],
-            verb: "Talk",
+            verb: "Talk to Barista",
             onClick: () => this.fadeTo("BaristaCloseup")
         });
 
         this.addHitbox({
             xRange: [0.10, 0.18],
             yRange: [0.42, 0.68],
-            verb: "Pet",
+            verb: getCatPetVerb(),
             clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });

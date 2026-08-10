@@ -40,6 +40,7 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("workshop-building", "assets/buildings/workshop.png");
         this.load.image("cafe-building", "assets/buildings/cafe.png");
         this.load.image("theatre-building", "assets/buildings/theatre.png");
+        this.load.image("cathouse", "assets/buildings/cathouse.png");
 
         // -------------------------------------------------
         // Player
@@ -79,6 +80,7 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("flowerbox", "assets/decor/flowerbox.png");
         this.load.image("signpost", "assets/decor/signpost.png");
         this.load.image("lamppost", "assets/decor/lamppost.png");
+        this.load.image("murray", "assets/decor/murray.png");
 
         // -------------------------------------------------
         // Ambient wildlife (birds, butterflies)
@@ -348,12 +350,20 @@ export default class BootScene extends Phaser.Scene {
         // pixels above the footprint/path, reading as "floating" above
         // where it should meet the ground. Same named-sub-frame technique
         // as ui-panel/torii-gate/trees above.
+        // cathouse.png (Ed's House — a small decorative structure beside
+        // the Workshop, see WorldObjects.js's DECOR entry) is a 1254x1254
+        // export with the same transparent-margin problem, real content
+        // in the (217,25)-(1044,1172) sub-rect. Grouped in with the other
+        // buildings here since it's the same illustration style/loaded
+        // from the same assets/buildings/ folder, even though it renders
+        // through the generic DECOR pipeline rather than BUILDINGS.
         const BUILDING_CROPS = {
             "gallery-building": [0, 42, 1024, 1431],
             "theatre-building": [47, 125, 917, 961],
             "cafe-building": [112, 77, 1355, 860],
             "library-building": [28, 257, 969, 936],
-            "workshop-building": [281, 37, 973, 893]
+            "workshop-building": [281, 37, 973, 893],
+            "cathouse": [217, 25, 827, 1147]
         };
         Object.entries(BUILDING_CROPS).forEach(([key, [x, y, w, h]]) => {
             if (this.textures.exists(key)) {
@@ -371,7 +381,12 @@ export default class BootScene extends Phaser.Scene {
             bench: [457, 328, 718, 291],
             flowerbox: [464, 372, 728, 214],
             signpost: [506, 118, 538, 729],
-            lamppost: [581, 58, 407, 866]
+            lamppost: [581, 58, 407, 866],
+            // murray.png (the demonic skull prop, see WorldObjects.js's
+            // DECOR entry / WorldScene.js's updateMurrayInteraction) is a
+            // 1024x1536 export with the same transparent-margin problem —
+            // real content in the (36,106)-(992,1439) sub-rect.
+            murray: [36, 106, 956, 1333]
         };
         Object.entries(DECOR_CROPS).forEach(([key, [x, y, w, h]]) => {
             if (this.textures.exists(key)) {

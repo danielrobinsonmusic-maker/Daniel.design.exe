@@ -182,13 +182,6 @@ const CAT_BLINK_DURATION = 120; // ms for the close half of the blink (yoyo doub
 const CAT_BLINK_HOLD = 90; // ms the eyes stay fully shut between closing and reopening
 const CAT_BLINK_INTERVAL = 4000; // ms between the start of one blink and the next — fixed, not randomized, same "deterministic, not Math.random" convention as addSway's tween timing below
 
-// Workshop-only accents: a lean-to covered work area and a tool crate,
-// so it reads as more utilitarian/weathered than the other buildings
-// even as a flat placeholder.
-const WORKSHOP_LEANTO_COLOR = 0x6b5a45;
-const WORKSHOP_POST_COLOR = 0x4a3d2f;
-const WORKSHOP_CRATE_COLOR = 0x7a5a3a;
-
 // Plaza/street furniture — deliberately hand-placed (not scattered like
 // the grass/tree variants), using the same "content" sub-frame crop as
 // buildings/trees/gate above. Each entry's display size keeps that
@@ -200,14 +193,23 @@ const DECOR_ASPECT = {
     signpost: 538 / 729,
     lamppost: 407 / 866,
     bush1: 49 / 45,
-    bush2: 62 / 40
+    bush2: 62 / 40,
+    cathouse: 827 / 1147,
+    murray: 956 / 1333
 };
 
 const DECOR_DISPLAY_WIDTH = {
     bench: 64,
     flowerbox: 56,
     bush1: 40,
-    bush2: 40
+    bush2: 40,
+    // Small decorative structure, not a real building — sized well under
+    // the Workshop's own 288 (BUILDING_ORIGINAL_WIDTH) so it reads as an
+    // accessory beside it, not a second building.
+    cathouse: 80,
+    // A small prop tucked in a gap between bushes — similar footprint to
+    // a bush (40) rather than a building. 50% of the original 44.
+    murray: 22
 };
 const DECOR_DISPLAY_HEIGHT = {
     signpost: 64,
@@ -313,7 +315,31 @@ const DECOR_RAW = [
     ...[19, 20, 21, 22, 23, 24, 25, 26, 27, 28].flatMap((row) => ([
         [row % 2 === 0 ? "bush1" : "bush2", 28, row],
         [row % 2 === 0 ? "bush1" : "bush2", 46, row]
-    ]))
+    ])),
+
+    // Ed's House — just east of the Workshop's own SE corner (Workshop is
+    // x:56-64 / y:21-27 pre-shift, see Buildings.js), at tile 66: the same
+    // spot the old flat-color lean-to/tool-crate placeholder used to sit
+    // (that prop's own leanToX math worked out to this exact tile — see
+    // git history/createBuilding — before it was replaced by this real
+    // art). Row 27 matches the Workshop's own front (south) wall row
+    // exactly, so its base lines up with the building's own front edge —
+    // "just to the right of the workshop, near the front right corner."
+    ["cathouse", 66, 27],
+
+    // Murray — the northwest corner of town, near the tree line, right in
+    // the gap between two of computeScatteredBushes' algorithmic bush
+    // pairs (confirmed live: pairs land at tile x=5/6 and x=9/10 on row 1
+    // pre-shift every run, since that scatter is hash-seeded/deterministic
+    // — not hand-authored bush placements like the DECOR entries above,
+    // but stable across every WorldScene re-create all the same). x=7.5 is
+    // the exact midpoint between the nearest pair of bushes (6 and 9,
+    // fractional tile allowed since createDecor just does arithmetic on
+    // it, no grid-snapping), not the gap's own midpoint (7.5 also, as it
+    // happens, but centered on the FLANKING BUSHES is what actually reads
+    // as "between them" rather than "between the two empty tiles"). Row 1
+    // pre-shift sits just south of the solid NORTH_BUFFER_ROWS tree line.
+    ["murray", 7.5, 1]
 ];
 
 export const DECOR = DECOR_RAW.map(([type, x, y, mirror]) => ({ type, x, y: y + NORTH_BUFFER_ROWS, mirror: !!mirror }));
@@ -626,10 +652,6 @@ export default class WorldObjects {
             const nativeAspect = sprite.frame.width / sprite.frame.height;
             sprite.setDisplaySize(targetWidth, targetWidth / nativeAspect);
 
-            if (building.name === "Workshop") {
-                return [sprite, ...this.createWorkshopDetails(baseX, baseY, footprintWidth, footprintHeight)];
-            }
-
             return [sprite];
 
         }
@@ -645,55 +667,4 @@ export default class WorldObjects {
 
     }
 
-    // A lean-to covered work area against the building's east wall, plus a
-    // tool crate sitting out front — "utilitarian" cues for the Workshop.
-    createWorkshopDetails(baseX, baseY, width, height) {
-
-        const leanToWidth = TILE_SIZE * 2;
-        const leanToHeight = TILE_SIZE * 1.5;
-        const leanToX = baseX + (width / 2) + (leanToWidth / 2);
-
-        const leanToRoof = this.scene.add.rectangle(
-            leanToX,
-            baseY,
-            leanToWidth,
-            leanToHeight,
-            WORKSHOP_LEANTO_COLOR
-        );
-        leanToRoof.setOrigin(0.5, 1);
-
-        const postWidth = 5;
-        const postHeight = leanToHeight;
-        const postOffsetX = (leanToWidth / 2) - (postWidth / 2) - 2;
-
-        const postLeft = this.scene.add.rectangle(
-            leanToX - postOffsetX,
-            baseY,
-            postWidth,
-            postHeight,
-            WORKSHOP_POST_COLOR
-        );
-        postLeft.setOrigin(0.5, 1);
-
-        const postRight = this.scene.add.rectangle(
-            leanToX + postOffsetX,
-            baseY,
-            postWidth,
-            postHeight,
-            WORKSHOP_POST_COLOR
-        );
-        postRight.setOrigin(0.5, 1);
-
-        const crate = this.scene.add.rectangle(
-            leanToX,
-            baseY,
-            TILE_SIZE * 0.6,
-            TILE_SIZE * 0.6,
-            WORKSHOP_CRATE_COLOR
-        );
-        crate.setOrigin(0.5, 1);
-
-        return [leanToRoof, postLeft, postRight, crate];
-
-    }
 }

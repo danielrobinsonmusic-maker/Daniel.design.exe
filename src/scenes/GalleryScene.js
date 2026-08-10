@@ -2,7 +2,7 @@ import AdventureScene from "../adventure/AdventureScene";
 import NPCDialogue from "../adventure/NPCDialogue";
 import ContentType from "../data/contentTypes";
 import { GALLERY_GREETING, GALLERY_QUESTIONS, GALLERY_EXHAUSTED } from "../data/galleryAttendant";
-import { recordCatInteraction } from "../managers/CatAchievement";
+import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
@@ -52,7 +52,7 @@ const SLIDESHOW_CONTENT = {
 const IDLE_TEXT = "Use your mouse to explore the Gallery.";
 const NATIVE_WIDTH = 1672;
 const NATIVE_HEIGHT = 941;
-const ATTENDANT_NAME = "Attendant";
+const ATTENDANT_NAME = "Museum Curator";
 const CAT_NAME = "Ed the Cat";
 
 export default class GalleryScene extends AdventureScene {
@@ -82,14 +82,14 @@ export default class GalleryScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.18, 0.32],
             yRange: [0.20, 0.90],
-            verb: "Talk",
+            verb: `Talk to ${ATTENDANT_NAME}`,
             onClick: () => this.dialogue.show()
         });
 
         this.addHitbox({
             xRange: [0.38, 0.63],
             yRange: [0.05, 0.48],
-            verb: "Admire",
+            verb: "Admire the Art",
             onClick: () => this.fadeTo("TakeoverFrame", {
                 frameKey: "gallery-slideshow",
                 content: SLIDESHOW_CONTENT,
@@ -100,7 +100,7 @@ export default class GalleryScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.73, 0.80],
             yRange: [0.62, 0.82],
-            verb: "Pet",
+            verb: getCatPetVerb(),
             clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });

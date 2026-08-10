@@ -1,6 +1,6 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { WORKSHOP_CONTENT } from "../data/workshopContent";
-import { recordCatInteraction } from "../managers/CatAchievement";
+import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
@@ -45,14 +45,14 @@ export default class WorkshopScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.40, 0.58],
             yRange: [0.38, 0.58],
-            verb: "Look",
+            verb: "Look at Blueprints",
             onClick: () => this.viewContent("blueprints")
         });
 
         this.addHitbox({
             xRange: [0.74, 0.84],
             yRange: [0.30, 0.52],
-            verb: "Look",
+            verb: "Look at Computer",
             clickSfx: "sfx-computer-select",
             onClick: () => this.viewContent("computer")
         });
@@ -60,14 +60,14 @@ export default class WorkshopScene extends AdventureScene {
         this.addHitbox({
             xRange: [0.05, 0.28],
             yRange: [0.22, 0.72],
-            verb: "Listen",
+            verb: "Listen to Guitar",
             onClick: () => this.viewContent("guitar")
         });
 
         this.addHitbox({
             xRange: [0.74, 0.84],
             yRange: [0.60, 0.80],
-            verb: "Pet",
+            verb: getCatPetVerb(),
             clickSfx: "sfx-cat",
             onClick: () => this.petCat()
         });

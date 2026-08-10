@@ -228,7 +228,14 @@ export default class AdventureBar {
                 fontFamily: "monospace",
                 fontSize: `${verbFontSize}px`,
                 color: "#000000",
-                fontStyle: "bold"
+                fontStyle: "bold",
+                align: "center",
+                // Verb strings now carry a target ("Talk to Librarian",
+                // "Open News and Featured Work") instead of a single word,
+                // so — unlike before — this can run wider than the panel
+                // at this font size. Same wrap width the speaker/body text
+                // already use.
+                wordWrap: { width: upperWrapWidth }
             }
         ).setOrigin(0.5).setVisible(false);
 
