@@ -4,6 +4,8 @@ import ContentType from "../data/contentTypes";
 import { GALLERY_GREETING, GALLERY_QUESTIONS, GALLERY_EXHAUSTED } from "../data/galleryAttendant";
 import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import { checkNPCAchievement } from "../managers/NPCAchievement";
+import { showNPCAchievementPopup } from "../ui/NPCAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
 // Passed straight through to TakeoverFrameScene as `content` — a browsable
@@ -124,6 +126,10 @@ export default class GalleryScene extends AdventureScene {
 
         if (recordCatInteraction("gallery")) {
             showCatAchievementPopup(this);
+        }
+
+        if (checkNPCAchievement()) {
+            showNPCAchievementPopup(this);
         }
 
         this.time.delayedCall(2500, () => {

@@ -2,6 +2,8 @@ import AdventureScene from "../adventure/AdventureScene";
 import { WORKSHOP_CONTENT } from "../data/workshopContent";
 import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import { checkNPCAchievement } from "../managers/NPCAchievement";
+import { showNPCAchievementPopup } from "../ui/NPCAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
 // Room level for the Workshop — backdrop + Look/Listen/Pet hitboxes,
@@ -99,6 +101,10 @@ export default class WorkshopScene extends AdventureScene {
 
         if (recordCatInteraction("workshop")) {
             showCatAchievementPopup(this);
+        }
+
+        if (checkNPCAchievement()) {
+            showNPCAchievementPopup(this);
         }
 
         this.time.delayedCall(2500, () => {

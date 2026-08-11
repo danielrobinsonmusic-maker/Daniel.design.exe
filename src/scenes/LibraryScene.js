@@ -1,6 +1,8 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import { checkNPCAchievement } from "../managers/NPCAchievement";
+import { showNPCAchievementPopup } from "../ui/NPCAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
 // Reference implementation of the Room level for the point-and-click
@@ -71,6 +73,10 @@ export default class LibraryScene extends AdventureScene {
 
         if (recordCatInteraction("library")) {
             showCatAchievementPopup(this);
+        }
+
+        if (checkNPCAchievement()) {
+            showNPCAchievementPopup(this);
         }
 
         this.time.delayedCall(2500, () => {

@@ -1,6 +1,8 @@
 import AdventureScene from "../adventure/AdventureScene";
 import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import { checkNPCAchievement } from "../managers/NPCAchievement";
+import { showNPCAchievementPopup } from "../ui/NPCAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
 // Room level for the Café — backdrop + Talk/Pet hitboxes, following the
@@ -56,6 +58,10 @@ export default class CafeScene extends AdventureScene {
 
         if (recordCatInteraction("cafe")) {
             showCatAchievementPopup(this);
+        }
+
+        if (checkNPCAchievement()) {
+            showNPCAchievementPopup(this);
         }
 
         this.time.delayedCall(2500, () => {

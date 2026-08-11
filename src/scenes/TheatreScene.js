@@ -2,6 +2,8 @@ import AdventureScene from "../adventure/AdventureScene";
 import { MOVIES } from "../data/movies";
 import { recordCatInteraction, getCatPetVerb } from "../managers/CatAchievement";
 import { showCatAchievementPopup } from "../ui/CatAchievementPopup";
+import { checkNPCAchievement } from "../managers/NPCAchievement";
+import { showNPCAchievementPopup } from "../ui/NPCAchievementPopup";
 import AudioManager from "../managers/AudioManager";
 
 // Room level for the Theatre — backdrop + Talk/Pet/Watch Movie hitboxes,
@@ -106,6 +108,10 @@ export default class TheatreScene extends AdventureScene {
 
         if (recordCatInteraction("theatre")) {
             showCatAchievementPopup(this);
+        }
+
+        if (checkNPCAchievement()) {
+            showNPCAchievementPopup(this);
         }
 
         this.time.delayedCall(2500, () => {

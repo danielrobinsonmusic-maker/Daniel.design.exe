@@ -1,5 +1,7 @@
 import SaveManager from "../managers/SaveManager";
 import { withPlayerName } from "../utils/dialogueText";
+import { checkNPCAchievement, humanNpcMetFlagKey } from "../managers/NPCAchievement";
+import { showNPCAchievementPopup } from "../ui/NPCAchievementPopup";
 
 // The last answer stays on screen this long before being swapped out for
 // the fallback line, once that was the final question — see point 2 of
@@ -88,6 +90,18 @@ export default class NPCDialogue {
     answerQuestion(question) {
 
         SaveManager.setFlag(this.flagKey(question.id));
+
+        // Counts toward the broader "talked to everyone in town"
+        // achievement the moment ANY question is answered — not "every
+        // question answered" — see managers/NPCAchievement.js. setFlag
+        // and checkNPCAchievement are both no-ops past the first call
+        // here, so this doesn't need its own "have I already counted"
+        // guard.
+        SaveManager.setFlag(humanNpcMetFlagKey(this.namespace));
+
+        if (checkNPCAchievement()) {
+            showNPCAchievementPopup(this.scene);
+        }
 
         const remaining = this.remainingQuestions();
 

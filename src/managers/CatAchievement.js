@@ -14,6 +14,14 @@ export function isCatAchievementComplete() {
     return CAT_BUILDINGS.every((building) => SaveManager.hasFlag(flagKey(building)));
 }
 
+// Exposes the underlying flag keys (not just the derived boolean above) so
+// NPCAchievement.js can fold these same 5 per-building flags into its own,
+// broader "talked to everyone in town" check without duplicating the
+// "cat.<building>" naming convention itself.
+export function getCatFlagKeys() {
+    return CAT_BUILDINGS.map(flagKey);
+}
+
 // True from the very first successful pet onward (in ANY building) — not
 // the same as isCatAchievementComplete() above, which requires all five.
 // Used to reveal the cat's name ("Edison") in the Pet hover verb once the

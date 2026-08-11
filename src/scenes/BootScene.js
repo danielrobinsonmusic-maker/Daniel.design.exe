@@ -24,6 +24,7 @@ export default class BootScene extends Phaser.Scene {
         this.load.image("ui-panel", "assets/ui/panel.png");
         this.load.image("dialogue-panel", "assets/ui/dialogue-panel.png");
         this.load.image("cat-achievement", "assets/ui/cat-achievement.png");
+        this.load.image("guybrush", "assets/ui/guybrush.png");
         this.load.image("zoom", "assets/ui/zoom.png");
         this.load.image("minimap-frame", "assets/ui/minimap-frame.png");
 
@@ -252,6 +253,18 @@ export default class BootScene extends Phaser.Scene {
             const catAchievementTexture = this.textures.get("cat-achievement");
             if (!catAchievementTexture.has("content")) {
                 catAchievementTexture.add("content", 0, 168, 349, 1232, 274);
+            }
+        }
+
+        // guybrush.png (NPCAchievementPopup.js's "talked to everyone in
+        // town" toast — see managers/NPCAchievement.js) is another
+        // 1254x1254 export with the same dead-padding problem — real
+        // content only lives in the (13,435)-(1242,759) sub-rect (measured
+        // via PIL alpha bbox). Same technique as cat-achievement above.
+        if (this.textures.exists("guybrush")) {
+            const guybrushTexture = this.textures.get("guybrush");
+            if (!guybrushTexture.has("content")) {
+                guybrushTexture.add("content", 0, 13, 435, 1229, 324);
             }
         }
 

@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { NORTH_BUFFER_ROWS } from "../world/Buildings";
 import { isCatAchievementComplete } from "../managers/CatAchievement";
+import { isNPCAchievementUnlocked } from "../managers/NPCAchievement";
+import { createPlaceholderTexture } from "../adventure/AdventureScene";
 import AudioManager from "../managers/AudioManager";
 import SaveManager from "../managers/SaveManager";
 import { OVERLOOK_VISITED_FLAG } from "../world/Minimap";
@@ -63,6 +65,36 @@ const PETAL_ROTATE_MIN_DURATION = 3000;
 const PETAL_ROTATE_MAX_DURATION = 6000;
 const PETAL_FADE_FRACTION = 0.3; // final portion of the fall spent fading out
 
+// Fireworks: a permanent addition once the broader "talked to everyone in
+// town" achievement unlocks (see managers/NPCAchievement.js) — same
+// "checked fresh at scene creation, stays on forever after" pattern the
+// cat achievement's own backdrop swap above already established, just an
+// added effect layered on top instead of a swapped asset. Two stages per
+// firework: a small rocket rises from near the bottom of the screen (a
+// single fading square, same "simple tween, no real physics" approach as
+// fireShootingStar above) to a random point in the upper half, then
+// bursts into a radial shower of particles via Phaser's own particle
+// emitter — gravity-affected and faded out over their lifetime, one
+// random color per burst so consecutive fireworks read as varied rather
+// than identical. No new art asset needed — a single generated square
+// (see createPlaceholderTexture, the same technique every other
+// generated texture in this project uses) is enough for pixel-style
+// particles.
+const FIREWORK_PARTICLE_KEY = "overlook-firework-particle";
+const FIREWORK_PARTICLE_SIZE = 3;
+const FIREWORK_COLORS = [0xff5050, 0xffd23f, 0x4fd8ff, 0xff6ec7, 0x7dff6e, 0xffffff];
+const FIREWORK_LAUNCH_MIN_DELAY = 3500;
+const FIREWORK_LAUNCH_MAX_DELAY = 7000;
+const FIREWORK_LAUNCH_MIN_DURATION = 700;
+const FIREWORK_LAUNCH_MAX_DURATION = 1000;
+const FIREWORK_BURST_COUNT_MIN = 28;
+const FIREWORK_BURST_COUNT_MAX = 40;
+const FIREWORK_BURST_SPEED_MIN = 60;
+const FIREWORK_BURST_SPEED_MAX = 160;
+const FIREWORK_BURST_LIFESPAN_MIN = 700;
+const FIREWORK_BURST_LIFESPAN_MAX = 1200;
+const FIREWORK_GRAVITY_Y = 220;
+
 export default class OverlookScene extends Phaser.Scene {
 
     constructor() {
@@ -89,6 +121,15 @@ export default class OverlookScene extends Phaser.Scene {
         const bg = this.add.image(width / 2, height / 2, bgKey);
         const scale = Math.min(width / BG_NATIVE_WIDTH, height / BG_NATIVE_HEIGHT);
         bg.setScale(scale);
+
+        // The broader "talked to everyone in town" achievement (see
+        // managers/NPCAchievement.js) — checked independently of the cat
+        // achievement above (no hard-coded ordering between the two, even
+        // though this one requires all 5 cats too) — permanently adds a
+        // fireworks display once unlocked.
+        if (isNPCAchievementUnlocked()) {
+            this.startFireworks();
+        }
 
         this.createPondRipple(POND_RIPPLE.x, POND_RIPPLE.y);
         this.createLanternGlow(LEFT_LANTERN_GLOW.x, LEFT_LANTERN_GLOW.y);
@@ -373,6 +414,96 @@ export default class OverlookScene extends Phaser.Scene {
             repeat: -1,
             ease: "Sine.easeInOut"
         });
+
+    }
+
+    // See the FIREWORK_* constants above. Independent of the shooting
+    // star/petal loops — own schedule, no shared state — same "recurring
+    // delayedCall that reschedules itself" pattern those already use, so
+    // it just keeps going for as long as this scene instance is alive
+    // (Phaser tears down every timer/tween a scene owns on shutdown, same
+    // as those two, so no explicit cleanup is needed here either).
+    startFireworks() {
+
+        createPlaceholderTexture(this, FIREWORK_PARTICLE_KEY, FIREWORK_PARTICLE_SIZE, FIREWORK_PARTICLE_SIZE, (g, w, h) => {
+            g.fillStyle(0xffffff, 1);
+            g.fillRect(0, 0, w, h);
+        });
+
+        this.scheduleNextFirework();
+
+    }
+
+    scheduleNextFirework() {
+
+        const delay = Phaser.Math.Between(FIREWORK_LAUNCH_MIN_DELAY, FIREWORK_LAUNCH_MAX_DELAY);
+
+        this.time.delayedCall(delay, () => {
+            this.launchFirework();
+            this.scheduleNextFirework();
+        });
+
+    }
+
+    // Stage 1: a small rocket rises from near the bottom of the screen to
+    // a random point in the upper half, fading in via additive blending
+    // (same look as the lantern glow/fireflies above) so it reads as a
+    // glowing spark rather than a flat square. Bursts on arrival.
+    launchFirework() {
+
+        const { width, height } = this.scale;
+
+        const startX = Phaser.Math.Between(width * 0.15, width * 0.85);
+        const startY = height + 10;
+        const apexX = startX + Phaser.Math.Between(-40, 40);
+        const apexY = Phaser.Math.Between(height * 0.15, height * 0.45);
+
+        const rocket = this.add.rectangle(startX, startY, FIREWORK_PARTICLE_SIZE, FIREWORK_PARTICLE_SIZE, 0xfff2c8, 1);
+        rocket.setBlendMode(Phaser.BlendModes.ADD);
+
+        const duration = Phaser.Math.Between(FIREWORK_LAUNCH_MIN_DURATION, FIREWORK_LAUNCH_MAX_DURATION);
+
+        this.tweens.add({
+            targets: rocket,
+            x: apexX,
+            y: apexY,
+            duration,
+            ease: "Quad.out",
+            onComplete: () => {
+                rocket.destroy();
+                this.burstFirework(apexX, apexY);
+            }
+        });
+
+    }
+
+    // Stage 2: a one-off radial particle burst — speed/angle/gravity give
+    // each particle its own arcing fall, alpha/scale fade them out over
+    // their lifetime rather than popping out abruptly. One random color
+    // per burst (not per particle) so each firework reads as a single
+    // coherent shell, same as a real one.
+    burstFirework(x, y) {
+
+        const color = Phaser.Utils.Array.GetRandom(FIREWORK_COLORS);
+
+        const emitter = this.add.particles(x, y, FIREWORK_PARTICLE_KEY, {
+            speed: { min: FIREWORK_BURST_SPEED_MIN, max: FIREWORK_BURST_SPEED_MAX },
+            angle: { min: 0, max: 360 },
+            lifespan: { min: FIREWORK_BURST_LIFESPAN_MIN, max: FIREWORK_BURST_LIFESPAN_MAX },
+            gravityY: FIREWORK_GRAVITY_Y,
+            alpha: { start: 1, end: 0 },
+            scale: { start: 1, end: 0.4 },
+            tint: color,
+            blendMode: Phaser.BlendModes.ADD,
+            emitting: false
+        });
+
+        emitter.explode(Phaser.Math.Between(FIREWORK_BURST_COUNT_MIN, FIREWORK_BURST_COUNT_MAX));
+
+        // The emitter has no ongoing purpose after its one burst — clean
+        // it up once every particle it spawned has finished (comfortably
+        // longer than the longest possible lifespan).
+        this.time.delayedCall(FIREWORK_BURST_LIFESPAN_MAX + 200, () => emitter.destroy());
 
     }
 

@@ -6,6 +6,8 @@ import { TREES, BUSHES, createTownSquare, FOUNTAIN_TILE, TOWN_SQUARE_BOUNDS } fr
 import { BUILDINGS, NORTH_BUFFER_ROWS } from "../world/Buildings";
 import AmbientWildlife from "../world/AmbientWildlife";
 import { isCatAchievementComplete } from "../managers/CatAchievement";
+import { checkNPCAchievement } from "../managers/NPCAchievement";
+import { showNPCAchievementPopup } from "../ui/NPCAchievementPopup";
 import SaveManager from "../managers/SaveManager";
 import { withPlayerName } from "../utils/dialogueText";
 import AudioManager from "../managers/AudioManager";
@@ -595,6 +597,13 @@ updateMurrayInteraction(hud) {
             // first interaction's own "..." and payoff line already read
             // "Murray" rather than waiting for a second approach.
             SaveManager.setFlag(MURRAY_MET_FLAG);
+
+            // Also counts toward the broader "talked to everyone in
+            // town" achievement (see managers/NPCAchievement.js) —
+            // Murray is one of its 10 flags.
+            if (checkNPCAchievement()) {
+                showNPCAchievementPopup(this);
+            }
 
             this.murrayState = "thinking";
             hud.showInteraction("Murray", "...");
