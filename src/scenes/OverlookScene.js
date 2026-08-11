@@ -70,16 +70,18 @@ const PETAL_FADE_FRACTION = 0.3; // final portion of the fall spent fading out
 // "checked fresh at scene creation, stays on forever after" pattern the
 // cat achievement's own backdrop swap above already established, just an
 // added effect layered on top instead of a swapped asset. Two stages per
-// firework: a small rocket rises from near the bottom of the screen (a
-// single fading square, same "simple tween, no real physics" approach as
-// fireShootingStar above) to a random point in the upper half, then
-// bursts into a radial shower of particles via Phaser's own particle
-// emitter — gravity-affected and faded out over their lifetime, one
-// random color per burst so consecutive fireworks read as varied rather
-// than identical. No new art asset needed — a single generated square
-// (see createPlaceholderTexture, the same technique every other
-// generated texture in this project uses) is enough for pixel-style
-// particles.
+// firework: a small rocket rises from roughly the vertical middle of the
+// screen — where the town itself sits in the backdrop art, so they read
+// as launching from town below rather than from the Overlook's own
+// foreground — fading in over the first part of its climb so it looks
+// like it's arriving from a distance rather than just switching on, then
+// bursts (at a randomized height, kept as-is — see FIREWORK_LAUNCH_APEX_*)
+// into a radial shower of particles via Phaser's own particle emitter —
+// gravity-affected and faded out over their lifetime, one random color
+// per burst so consecutive fireworks read as varied rather than
+// identical. No new art asset needed — a single generated square (see
+// createPlaceholderTexture, the same technique every other generated
+// texture in this project uses) is enough for pixel-style particles.
 const FIREWORK_PARTICLE_KEY = "overlook-firework-particle";
 const FIREWORK_PARTICLE_SIZE = 3;
 const FIREWORK_COLORS = [0xff5050, 0xffd23f, 0x4fd8ff, 0xff6ec7, 0x7dff6e, 0xffffff];
@@ -87,6 +89,16 @@ const FIREWORK_LAUNCH_MIN_DELAY = 3500;
 const FIREWORK_LAUNCH_MAX_DELAY = 7000;
 const FIREWORK_LAUNCH_MIN_DURATION = 700;
 const FIREWORK_LAUNCH_MAX_DURATION = 1000;
+// Fraction of canvas height the rocket starts from — a small random band
+// around the middle rather than one fixed row, so consecutive launches
+// don't all start from the exact same point.
+const FIREWORK_LAUNCH_START_Y_MIN_FRACTION = 0.48;
+const FIREWORK_LAUNCH_START_Y_MAX_FRACTION = 0.56;
+// Fraction of the launch's own duration spent fading in from invisible —
+// the back end of the climb stays fully visible.
+const FIREWORK_FADE_IN_FRACTION = 0.4;
+const FIREWORK_LAUNCH_APEX_MIN_FRACTION = 0.15;
+const FIREWORK_LAUNCH_APEX_MAX_FRACTION = 0.45;
 const FIREWORK_BURST_COUNT_MIN = 28;
 const FIREWORK_BURST_COUNT_MAX = 40;
 const FIREWORK_BURST_SPEED_MIN = 60;
@@ -445,21 +457,34 @@ export default class OverlookScene extends Phaser.Scene {
 
     }
 
-    // Stage 1: a small rocket rises from near the bottom of the screen to
-    // a random point in the upper half, fading in via additive blending
+    // Stage 1: a small rocket rises from roughly the middle of the screen
+    // (where the town sits in the backdrop art — see the FIREWORK_* block
+    // above) to a random point in the upper half, via additive blending
     // (same look as the lantern glow/fireflies above) so it reads as a
-    // glowing spark rather than a flat square. Bursts on arrival.
+    // glowing spark rather than a flat square. Starts invisible and fades
+    // in over the first part of the climb (a separate tween on the same
+    // target, same "one tween per property" style fireShootingStar uses
+    // above) rather than being instantly visible, so it looks like it's
+    // arriving from a distance instead of switching on mid-air. Bursts on
+    // arrival.
     launchFirework() {
 
         const { width, height } = this.scale;
 
         const startX = Phaser.Math.Between(width * 0.15, width * 0.85);
-        const startY = height + 10;
+        const startY = Phaser.Math.Between(
+            height * FIREWORK_LAUNCH_START_Y_MIN_FRACTION,
+            height * FIREWORK_LAUNCH_START_Y_MAX_FRACTION
+        );
         const apexX = startX + Phaser.Math.Between(-40, 40);
-        const apexY = Phaser.Math.Between(height * 0.15, height * 0.45);
+        const apexY = Phaser.Math.Between(
+            height * FIREWORK_LAUNCH_APEX_MIN_FRACTION,
+            height * FIREWORK_LAUNCH_APEX_MAX_FRACTION
+        );
 
         const rocket = this.add.rectangle(startX, startY, FIREWORK_PARTICLE_SIZE, FIREWORK_PARTICLE_SIZE, 0xfff2c8, 1);
         rocket.setBlendMode(Phaser.BlendModes.ADD);
+        rocket.setAlpha(0);
 
         const duration = Phaser.Math.Between(FIREWORK_LAUNCH_MIN_DURATION, FIREWORK_LAUNCH_MAX_DURATION);
 
@@ -473,6 +498,13 @@ export default class OverlookScene extends Phaser.Scene {
                 rocket.destroy();
                 this.burstFirework(apexX, apexY);
             }
+        });
+
+        this.tweens.add({
+            targets: rocket,
+            alpha: 1,
+            duration: duration * FIREWORK_FADE_IN_FRACTION,
+            ease: "Sine.easeOut"
         });
 
     }

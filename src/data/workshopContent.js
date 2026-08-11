@@ -28,7 +28,7 @@ export const WORKSHOP_CONTENT = [
         // added/removed:
         //   python3 -c "import os; files=[f for f in os.listdir('public/assets/documents/blueprints') if not f.startswith('.')]; files.sort(key=str.lower); print('\n'.join(files))"
         files: [
-            "Adventurers.JPG",
+            "Animal Crossing.avif",
             "Black Phoebe.png",
             "Bush 2.png",
             "Character Sprite Sheet.png",
@@ -39,25 +39,21 @@ export const WORKSHOP_CONTENT = [
             "Fountain Animation 4.png",
             "House Finch.png",
             "Interface Sheet.png",
-            "Japanese Garden Tokyo.jpeg",
+            "Link's Awakening.webp",
             "Monarch.png",
-            "Northern Michigan.jpg",
+            "Monkey Island UI.jpeg",
+            "Myst.png",
             "Petal.png",
             "Retro Town Tileset and Map Guide.png",
             "Secondary Spritesheet.png",
-            "Signage.jpeg",
             "Swallowtail.png",
-            "The Real Ed the Cat.JPG",
-            "The Real Workshop.JPG",
-            "Tokyo.jpeg",
             "torii.png",
             "Town green tileset showcase.png",
             "Tree 1.png",
             "Tree 2.png",
             "Tree 3.png",
             "Tree 4.png",
-            "Walking Animation.png",
-            "Yellow Swallowtail.jpeg"
+            "Walking Animation.png"
         ]
     },
     {
@@ -71,11 +67,11 @@ export const WORKSHOP_CONTENT = [
         // case-insensitive filesystem).
         folder: "video/Computer",
         files: [
-            "Meta Horizon New User Experience Prototype.mov",
+            "Meta Horizon New User Experience Prototype.mp4",
             "Netflix Pick 6 Prototype.mp4",
             "Netflix Real-Time Voting Animation.mp4",
             "Netflix Waiting Room Mini Game Prototype.mp4",
-            "Netflix Ways to Watch Prototype.mov"
+            "Netflix Ways to Watch Prototype.mp4"
         ]
     },
     {
