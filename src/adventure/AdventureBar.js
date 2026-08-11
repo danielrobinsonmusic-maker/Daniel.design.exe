@@ -45,6 +45,9 @@ const SPEAKER_BODY_GAP_FRACTION = 0.018;
 const SPEAKER_FONT_FRACTION = 0.072;
 const BODY_FONT_FRACTION = 0.06;
 const OPTION_FONT_FRACTION = 0.058;
+// Floor for the shrink-to-fit sizing below (fitOptionText) — long question
+// text can shrink down to this before we'd rather clip than go smaller.
+const OPTION_MIN_FONT_FRACTION = 0.04;
 const VERB_FONT_FRACTION = 0.145;
 
 // "Press ESC to go back." reminder — appended below the main text,
@@ -108,10 +111,13 @@ export default class AdventureBar {
         }
 
         const zonePadding = this.height * ZONE_PADDING_FRACTION;
+        this.zonePadding = zonePadding;
         const speakerBodyGap = this.height * SPEAKER_BODY_GAP_FRACTION;
         const speakerFontSize = Math.round(this.height * SPEAKER_FONT_FRACTION);
         const bodyFontSize = Math.round(this.height * BODY_FONT_FRACTION);
         const optionFontSize = Math.round(this.height * OPTION_FONT_FRACTION);
+        this.optionFontSize = optionFontSize;
+        this.optionMinFontSize = Math.round(this.height * OPTION_MIN_FONT_FRACTION);
         const verbFontSize = Math.round(this.height * VERB_FONT_FRACTION);
         const escHintFontSize = Math.round(this.height * ESC_HINT_FONT_FRACTION);
         this.escHintGap = this.height * ESC_HINT_GAP_FRACTION;
@@ -378,7 +384,9 @@ export default class AdventureBar {
 
             if (option) {
 
-                label.setText(option.label);
+                const zone = this.optionZones[index];
+                const maxHeight = (zone.y1 - zone.y0) - (this.zonePadding * 2);
+                this.fitOptionText(label, option.label, maxHeight);
                 label.setVisible(true);
                 label.setInteractive({ useHandCursor: false });
                 this.optionCallbacks[index] = option.onSelect;
@@ -393,6 +401,30 @@ export default class AdventureBar {
             }
 
         });
+
+    }
+
+    // Question labels are player-authored sentences of very different
+    // lengths (e.g. "Where does Daniel live now?" vs. "Does Daniel have
+    // any favorite designers or artists?") sharing one fixed-size panel
+    // slot, with no scroll arrows here (unlike the upper zone's body
+    // text) — these are meant to be fully visible at a glance, not
+    // scrolled through. Shrinks the font a step at a time, starting fresh
+    // from the base size every call (not compounding shrinks from
+    // whatever this same label last showed), until the wrapped text's own
+    // measured height fits the zone, or OPTION_MIN_FONT_FRACTION is hit —
+    // past that point we'd rather it read small than clip/overflow.
+    fitOptionText(label, text, maxHeight) {
+
+        let fontSize = this.optionFontSize;
+
+        label.setFontSize(fontSize);
+        label.setText(text);
+
+        while (label.height > maxHeight && fontSize > this.optionMinFontSize) {
+            fontSize -= 1;
+            label.setFontSize(fontSize);
+        }
 
     }
 

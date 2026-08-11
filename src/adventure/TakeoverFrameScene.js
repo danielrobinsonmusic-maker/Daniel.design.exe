@@ -110,6 +110,15 @@ const NAV_ARROW_HIT_SIZE = 64;
 const NAV_ARROW_OFFSET = 46;
 const NAV_ARROW_TEXTURE_KEY = "takeover-nav-arrow";
 
+// Prev/next arrows inside the full-resolution zoom overlay itself (see
+// openGalleryPdfZoom) — screen-space positioned (the zoom overlay sits
+// centered on-screen, not against contentBounds like the book/gallery
+// arrows above), and light-colored rather than NAV_ARROW_TEXTURE_KEY's
+// dark parchment-book brown, which would be nearly invisible against the
+// near-black zoom backdrop.
+const ZOOM_ARROW_MARGIN = 36;
+const ZOOM_NAV_ARROW_TEXTURE_KEY = "takeover-zoom-nav-arrow";
+
 // A GALLERY content entry (see ContentType.GALLERY, e.g. the Workshop's
 // blueprints viewer — src/data/workshopContent.js) shows one image at a
 // time from content.files, shrunk to fit (never upscaled) within the
@@ -231,17 +240,19 @@ export default class TakeoverFrameScene extends AdventureScene {
         return false;
     }
 
-    // Nested one level deeper each time: a page's zoom overlay (see
-    // openPageZoom) is the innermost level, so it closes first; a
-    // PDF_GALLERY's "full document" reading view (see openFullPdf) is the
-    // next level out, closing back to the gallery of previews; only then
-    // does ESC fall through to the usual "go back a level" — otherwise
-    // it'd be too easy to accidentally back all the way out of the book
-    // while trying to close a zoomed page or a full document.
+    // A page's zoom overlay (see openPageZoom) is the innermost level, so
+    // it closes first. For a PDF_GALLERY document specifically, its zoom
+    // IS the reading view (paging happens via its own arrows — see
+    // openGalleryPdfZoom), not a detour from an otherwise-browsable book
+    // spread the way Resume's zoom is — so closing it goes straight back
+    // to the gallery of previews in this same ESC press (closeZoomOrReturn
+    // below), rather than stopping at the single static page-1 book view
+    // first. Only once neither the zoom nor the full-document view is
+    // open does ESC fall through to the usual "go back a level".
     onEscape() {
 
         if (this.zoomOverlay) {
-            this.closePageZoom();
+            this.closeZoomOrReturn();
             return true;
         }
 
@@ -1224,6 +1235,11 @@ export default class TakeoverFrameScene extends AdventureScene {
         this.pdfGalleryIndex = 0;
         this.pdfGalleryFiles = this.content.files;
         this.pdfGalleryFolder = this.content.folder;
+        // Optional closing message, browsed to as one more "page" past the
+        // last real file (see renderPdfGalleryItem/displayPdfGalleryOutro/
+        // updatePdfGalleryArrows) rather than a separate screen — e.g.
+        // Portfolio's own library.js entry.
+        this.pdfGalleryOutro = this.content.outro || null;
 
         this.prevArrow = this.createNavArrow("prev", () => this.turnPdfGallery(-1));
         this.nextArrow = this.createNavArrow("next", () => this.turnPdfGallery(1));
@@ -1255,6 +1271,13 @@ export default class TakeoverFrameScene extends AdventureScene {
         if (this.pdfGalleryLoadingText) {
             this.pdfGalleryLoadingText.destroy();
             this.pdfGalleryLoadingText = null;
+        }
+
+        // The outro (if any) is one past the last real file — nothing to
+        // load, just a static message page.
+        if (this.pdfGalleryIndex >= this.pdfGalleryFiles.length) {
+            this.displayPdfGalleryOutro();
+            return;
         }
 
         const token = ++this.pdfGalleryLoadToken;
@@ -1392,36 +1415,63 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
+    // The closing "page" shown once the player has browsed past the last
+    // real file (see renderPdfGalleryItem/pdfGalleryOutro) — plain
+    // centered text on the left page, same convention as every other
+    // single-item book page, with no image/hitbox since there's nothing
+    // to open.
+    displayPdfGalleryOutro() {
+
+        const { left: page } = this.getBookPageZones();
+        const pad = BOOK_FLOW_PADDING;
+
+        const centerX = (page.left + pad + page.right - pad) / 2;
+        const centerY = (page.top + pad + page.bottom - pad) / 2;
+
+        const text = this.add.text(centerX, centerY, this.pdfGalleryOutro, {
+            fontFamily: "monospace",
+            fontSize: "15px",
+            color: "#3a2c1c",
+            align: "center",
+            wordWrap: { width: (page.right - pad) - (page.left + pad) }
+        }).setOrigin(0.5).setDepth(1);
+
+        this.pdfGalleryObjects.push(text);
+
+        this.updatePdfGalleryArrows();
+
+    }
+
     updatePdfGalleryArrows() {
 
+        // +1 past the last real file whenever there's an outro page to
+        // browse to — see renderPdfGalleryItem.
+        const totalPages = this.pdfGalleryFiles.length + (this.pdfGalleryOutro ? 1 : 0);
+
         const hasPrev = this.pdfGalleryIndex > 0;
-        const hasNext = this.pdfGalleryIndex < this.pdfGalleryFiles.length - 1;
+        const hasNext = this.pdfGalleryIndex < totalPages - 1;
 
         this.setNavArrowActive(this.prevArrow, hasPrev);
         this.setNavArrowActive(this.nextArrow, hasNext);
 
     }
 
-    // Hands off from the gallery-of-previews to the full page-by-page
-    // reading view — reuses renderBookPdf completely unchanged (page-turn
-    // arrows, per-page click-to-zoom with the magnifying-glass cursor,
-    // the works) by temporarily swapping this.content to a synthetic
-    // single-document object pointing at the clicked file, since every
-    // PDF-reading method here (loadPdfDocument, renderPdfPageIntoBox)
-    // already reads its document id/file/folder from this.content rather
-    // than taking them as parameters. this.pdfGalleryTopContent holds
-    // onto the real gallery content so closeFullPdf can restore it.
+    // Hands off from the gallery-of-previews to a single document —
+    // temporarily swaps this.content to a synthetic single-document
+    // object pointing at the clicked file, since every PDF-reading
+    // method here (loadPdfDocument, renderPdfPageIntoBox) already reads
+    // its document id/file/folder from this.content rather than taking
+    // them as parameters. this.pdfGalleryTopContent holds onto the real
+    // gallery content so closeFullPdf can restore it.
     //
-    // Immediately zooms into page 1 once the spread's rendered — the same
-    // magnifying-glass "click to see full resolution" mechanic a page's
-    // own hitbox uses (openPageZoom), just triggered automatically here
-    // instead of requiring a second click on the now-visible page, so
-    // picking a preview goes straight to the fully-rendered document in
-    // one click rather than stopping at the smaller in-book view first.
-    // That in-book view (with its own page-turn arrows) is still built
-    // underneath and reachable by backing out of the zoom (ESC once) —
-    // nothing about multi-page navigation is lost, it's just one level
-    // deeper than before instead of the first thing shown.
+    // renderBookPdf still runs first (it's what actually loads the PDF
+    // and sets this.numPages/this.pdfDoc), but for a PDF_GALLERY document
+    // it only ever renders page 1 into the book view, with no page-turn
+    // arrows of its own (see renderBookSpread) — the immediate
+    // openGalleryPdfZoom call right after is where the REST of the
+    // document lives, with its own prev/next arrows to scan through every
+    // page without ever closing the zoom. Picking a preview goes straight
+    // to that fully-rendered, fully-navigable view in one click.
     async openFullPdf(filename) {
 
         this.pdfGalleryObjects.forEach((obj) => obj.destroy());
@@ -1446,11 +1496,7 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         if (this.cancelled) return;
 
-        const firstPageKey = `pdf-page-${this.content.id}-1`;
-
-        if (this.textures.exists(firstPageKey)) {
-            this.openPageZoom(firstPageKey);
-        }
+        await this.openGalleryPdfZoom(1);
 
     }
 
@@ -1528,8 +1574,16 @@ export default class TakeoverFrameScene extends AdventureScene {
         this.pdfDoc = pdfDoc;
         this.numPages = pdfDoc.numPages;
 
-        this.prevArrow = this.createNavArrow("prev", () => this.turnPage(-1));
-        this.nextArrow = this.createNavArrow("next", () => this.turnPage(1));
+        // A PDF_GALLERY document (Writing Samples) only ever shows page 1
+        // here — the rest of the document is paged through in the zoom
+        // overlay instead (see openGalleryPdfZoom), so this small in-book
+        // view has no page-turn arrows of its own to create. Resume
+        // (opened directly, not via PDF_GALLERY) keeps the full spread +
+        // page-turn arrows unchanged.
+        if (!this.pdfGalleryFullViewActive) {
+            this.prevArrow = this.createNavArrow("prev", () => this.turnPage(-1));
+            this.nextArrow = this.createNavArrow("next", () => this.turnPage(1));
+        }
 
         await this.renderBookSpread();
 
@@ -1597,50 +1651,68 @@ export default class TakeoverFrameScene extends AdventureScene {
         const pageRenders = [];
 
         if (leftPageNum <= this.numPages) pageRenders.push(this.renderPdfPageIntoBox(leftPageNum, leftBox, token));
-        if (rightPageNum <= this.numPages) pageRenders.push(this.renderPdfPageIntoBox(rightPageNum, rightBox, token));
 
-        this.updateBookArrows();
+        // See renderBookPdf — a PDF_GALLERY document never shows a second
+        // page here, and (having no page-turn arrows) never needs
+        // updateBookArrows() either.
+        if (!this.pdfGalleryFullViewActive) {
+
+            if (rightPageNum <= this.numPages) pageRenders.push(this.renderPdfPageIntoBox(rightPageNum, rightBox, token));
+
+            this.updateBookArrows();
+
+        }
 
         await Promise.all(pageRenders);
 
     }
 
-    // Renders one PDF page to an offscreen canvas via pdfjs and displays it
-    // contain-fit within box (same fit math as renderImage) — cached by
-    // page number so flipping back to an already-viewed spread is instant
-    // instead of re-rendering. `token` guards against a stale render
-    // finishing after the user has already turned to a different spread
-    // (e.g. clicking Next twice in quick succession).
-    async renderPdfPageIntoBox(pageNum, box, token) {
+    // Renders PDF page `pageNum` to an offscreen canvas via pdfjs and
+    // caches it as a texture keyed by page number, if not already cached
+    // — shared by renderPdfPageIntoBox (which also places the result into
+    // a book-page box below) and openGalleryPdfZoom's own page-turn
+    // arrows (which only need the texture itself, not a book-page
+    // placement, since they render straight into the zoom overlay).
+    async ensurePdfPageTexture(pageNum) {
 
         const key = `pdf-page-${this.content.id}-${pageNum}`;
 
-        if (!this.textures.exists(key)) {
+        if (this.textures.exists(key)) return key;
 
-            const page = await this.pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: BOOK_PAGE_RENDER_SCALE });
+        const page = await this.pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: BOOK_PAGE_RENDER_SCALE });
 
-            const canvas = document.createElement("canvas");
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
-            await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
 
-            if (this.cancelled) return;
+        if (this.cancelled) return key;
 
-            this.textures.addCanvas(key, canvas);
+        this.textures.addCanvas(key, canvas);
 
-            // The game runs pixelArt:true (nearest-neighbor filtering
-            // everywhere, for crisp sprite art), which makes a downscaled
-            // photo/document texture look blockier than it needs to —
-            // override it back to smooth filtering for this one texture.
-            // Doesn't fix the real readability problem on its own (this
-            // page is still only a couple hundred pixels wide in-book —
-            // see openPageZoom for the actual fix), but it's a free
-            // improvement to the in-book thumbnail regardless.
-            this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+        // The game runs pixelArt:true (nearest-neighbor filtering
+        // everywhere, for crisp sprite art), which makes a downscaled
+        // photo/document texture look blockier than it needs to —
+        // override it back to smooth filtering for this one texture.
+        // Doesn't fix the real readability problem on its own (this page
+        // is still only a couple hundred pixels wide in-book — see
+        // openPageZoom for the actual fix), but it's a free improvement
+        // to the in-book thumbnail regardless.
+        this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
 
-        }
+        return key;
+
+    }
+
+    // Renders one PDF page contain-fit within box (same fit math as
+    // renderImage). `token` guards against a stale render finishing after
+    // the user has already turned to a different spread (e.g. clicking
+    // Next twice in quick succession).
+    async renderPdfPageIntoBox(pageNum, box, token) {
+
+        const key = await this.ensurePdfPageTexture(pageNum);
 
         if (this.cancelled || token !== this.renderToken) return;
 
@@ -1653,16 +1725,27 @@ export default class TakeoverFrameScene extends AdventureScene {
         this.pageObjects.push(image);
 
         // Clicking the page opens it full-size — see BOOK_ZOOM_* comment
-        // above and openPageZoom. clickSfx left as the generic default
-        // (not sfx-page-turn, which is reserved for actually turning to a
-        // different spread via the arrows below).
+        // above and openPageZoom/openGalleryPdfZoom. A PDF_GALLERY
+        // document's own multi-page zoom (with its own page-turn arrows)
+        // instead of the plain single-image zoom Resume uses, since this
+        // is the same page 1 that's about to auto-zoom anyway (see
+        // openFullPdf) and re-clicking it later should behave the same
+        // way. clickSfx left as the generic default (not sfx-page-turn,
+        // which is reserved for actually turning to a different spread
+        // via the arrows below).
         const { left, top, dispW, dispH } = this.backdropMetrics;
 
         const hitZone = this.addHitbox({
             xRange: [(box.left - left) / dispW, (box.right - left) / dispW],
             yRange: [(box.top - top) / dispH, (box.bottom - top) / dispH],
             verb: "Zoom",
-            onClick: () => this.openPageZoom(key)
+            onClick: () => {
+                if (this.pdfGalleryFullViewActive) {
+                    this.openGalleryPdfZoom(pageNum);
+                } else {
+                    this.openPageZoom(key);
+                }
+            }
         });
 
         // Swaps the cursor to the zoom icon on hover — BEFORE the page is
@@ -1685,6 +1768,54 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
+    // Re-encodes whatever's backing textureKey into a data: URL, for use
+    // as a full-resolution DOM <img>'s own src (see buildZoomOverlay/
+    // updateZoomImage). Always goes through a canvas rather than reusing
+    // source.src directly for a regular loaded image (carousel photos) —
+    // Phaser's image loader backs this.load.image() textures with a
+    // blob: URL that it can revoke once no longer needed internally,
+    // which still displays fine as the texture's own already-decoded
+    // source but 404s (confirmed empirically: net::ERR_FILE_NOT_FOUND) if
+    // a brand-new <img> element tries to fetch that same URL again here.
+    // Drawing the already-decoded source into a fresh canvas sidesteps
+    // that entirely, since it reads pixel data directly rather than
+    // re-fetching a URL. A PDF page's source is already a canvas
+    // (rendered at BOOK_PAGE_RENDER_SCALE) with no such problem, but
+    // going through the same path for both keeps this one simple rather
+    // than branching on source type.
+    getZoomImageSource(textureKey) {
+
+        const source = this.textures.get(textureKey).getSourceImage();
+        const srcWidth = source.naturalWidth || source.width;
+        const srcHeight = source.naturalHeight || source.height;
+
+        const canvas = typeof source.toDataURL === "function" ? source : (() => {
+            const c = document.createElement("canvas");
+            c.width = srcWidth;
+            c.height = srcHeight;
+            c.getContext("2d").drawImage(source, 0, 0);
+            return c;
+        })();
+
+        return { url: canvas.toDataURL(), srcWidth, srcHeight };
+
+    }
+
+    // Contain-fits a source image within the zoom overlay's own max-size
+    // budget — shared by buildZoomOverlay (initial size) and
+    // updateZoomImage (re-fit when openGalleryPdfZoom swaps to a
+    // different page, which may not share the same native dimensions).
+    fitZoomImageSize(srcWidth, srcHeight) {
+
+        const { width, height } = this.scale;
+        const maxW = width * BOOK_ZOOM_MAX_WIDTH_FRACTION;
+        const maxH = height * BOOK_ZOOM_MAX_HEIGHT_FRACTION;
+        const scale = Math.min(maxW / srcWidth, maxH / srcHeight);
+
+        return { dispW: Math.round(srcWidth * scale), dispH: Math.round(srcHeight * scale) };
+
+    }
+
     // Full-size reading view for one page (or, since this is shared by
     // renderCarouselImage too, one News-and-Featured-Work photo) — a
     // Phaser DOM Element (see game.js's dom.createContainer config, the
@@ -1697,53 +1828,29 @@ export default class TakeoverFrameScene extends AdventureScene {
     // BOOK_PAGE_RENDER_SCALE, a carousel photo's is the already-loaded
     // HTMLImageElement itself; either way it's already high-res, just
     // displayed too small in-book to read/see clearly.
-    openPageZoom(textureKey) {
+    //
+    // Shared by openPageZoom (Resume/carousel photos — no page nav) and
+    // openGalleryPdfZoom (Writing Samples — adds its own prev/next
+    // arrows on top afterward). `hintText` lets the gallery variant
+    // describe its different close behavior (see closeZoomOrReturn)
+    // and show a page counter.
+    buildZoomOverlay(textureKey, hintText = BOOK_ZOOM_HINT_TEXT) {
 
-        if (this.zoomOverlay) return;
-
-        const source = this.textures.get(textureKey).getSourceImage();
-        const srcWidth = source.naturalWidth || source.width;
-        const srcHeight = source.naturalHeight || source.height;
-
-        // Always re-encode through a canvas rather than reusing
-        // source.src directly for a regular loaded image (carousel
-        // photos) — Phaser's image loader backs this.load.image()
-        // textures with a blob: URL that it can revoke once no longer
-        // needed internally, which still displays fine as the texture's
-        // own already-decoded source but 404s (confirmed empirically:
-        // net::ERR_FILE_NOT_FOUND) if a brand-new <img> element tries to
-        // fetch that same URL again here. Drawing the already-decoded
-        // source into a fresh canvas sidesteps that entirely, since it
-        // reads pixel data directly rather than re-fetching a URL. A PDF
-        // page's source is already a canvas (rendered at
-        // BOOK_PAGE_RENDER_SCALE) with no such problem, but going through
-        // the same path for both keeps this one simple rather than
-        // branching on source type.
-        const canvas = typeof source.toDataURL === "function" ? source : (() => {
-            const c = document.createElement("canvas");
-            c.width = srcWidth;
-            c.height = srcHeight;
-            c.getContext("2d").drawImage(source, 0, 0);
-            return c;
-        })();
-
-        const srcUrl = canvas.toDataURL();
+        const { url, srcWidth, srcHeight } = this.getZoomImageSource(textureKey);
 
         const { width, height } = this.scale;
 
         const backdrop = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, BOOK_ZOOM_BACKDROP_ALPHA);
         backdrop.setDepth(9000);
         backdrop.setInteractive();
-        backdrop.on("pointerdown", () => this.closePageZoom());
+        backdrop.on("pointerdown", () => this.closeZoomOrReturn());
 
-        const maxW = width * BOOK_ZOOM_MAX_WIDTH_FRACTION;
-        const maxH = height * BOOK_ZOOM_MAX_HEIGHT_FRACTION;
-        const scale = Math.min(maxW / srcWidth, maxH / srcHeight);
+        const { dispW, dispH } = this.fitZoomImageSize(srcWidth, srcHeight);
 
         const img = document.createElement("img");
-        img.src = srcUrl;
-        img.style.width = `${Math.round(srcWidth * scale)}px`;
-        img.style.height = `${Math.round(srcHeight * scale)}px`;
+        img.src = url;
+        img.style.width = `${dispW}px`;
+        img.style.height = `${dispH}px`;
         img.style.boxShadow = "0 12px 48px rgba(0,0,0,0.65)";
         // No CSS cursor override here (a plain DOM <img> would otherwise
         // show the real OS pointer over it, fighting with our own hidden-
@@ -1768,7 +1875,7 @@ export default class TakeoverFrameScene extends AdventureScene {
         // it.
         domImage.pointerEvents = "none";
 
-        const hint = this.add.text(width / 2, height - BOOK_ZOOM_HINT_BOTTOM_MARGIN, BOOK_ZOOM_HINT_TEXT, {
+        const hint = this.add.text(width / 2, height - BOOK_ZOOM_HINT_BOTTOM_MARGIN, hintText, {
             fontFamily: "monospace",
             fontSize: "14px",
             color: "#e8e2d5"
@@ -1780,6 +1887,137 @@ export default class TakeoverFrameScene extends AdventureScene {
 
     }
 
+    // Swaps the overlay's image (and re-fits its size, in case the new
+    // page isn't the same native dimensions) without tearing down and
+    // rebuilding the backdrop/cursor state — see turnGalleryZoomPage.
+    updateZoomImage(textureKey) {
+
+        const { url, srcWidth, srcHeight } = this.getZoomImageSource(textureKey);
+        const { dispW, dispH } = this.fitZoomImageSize(srcWidth, srcHeight);
+
+        const img = this.zoomOverlay.domImage.node;
+        img.src = url;
+        img.style.width = `${dispW}px`;
+        img.style.height = `${dispH}px`;
+
+    }
+
+    openPageZoom(textureKey) {
+
+        if (this.zoomOverlay) return;
+
+        this.buildZoomOverlay(textureKey);
+
+    }
+
+    // Writing Samples' own zoom entry point (see openFullPdf and
+    // renderPdfPageIntoBox's hitbox) — same full-resolution DOM overlay
+    // as openPageZoom, plus its own prev/next arrows (createZoomNavArrow)
+    // so the whole document can be paged through without ever closing
+    // the zoom. This is what "differs from Resume" — Resume's viewer
+    // pages through a document by closing the zoom, turning the book's
+    // own page, and re-zooming; here paging happens directly in the
+    // zoom, and the book underneath never shows more than page 1 (see
+    // renderBookSpread).
+    async openGalleryPdfZoom(pageNum) {
+
+        if (this.zoomOverlay) return;
+
+        const clampedPage = Math.max(1, Math.min(pageNum, this.numPages));
+        const key = await this.ensurePdfPageTexture(clampedPage);
+
+        if (this.cancelled) return;
+
+        this.galleryZoomPage = clampedPage;
+
+        this.buildZoomOverlay(key, this.galleryZoomHintText());
+
+        this.zoomPrevArrow = this.createZoomNavArrow("prev", () => this.turnGalleryZoomPage(-1));
+        this.zoomNextArrow = this.createZoomNavArrow("next", () => this.turnGalleryZoomPage(1));
+
+        this.updateGalleryZoomArrows();
+
+    }
+
+    galleryZoomHintText() {
+        return `Page ${this.galleryZoomPage} of ${this.numPages}  —  Click anywhere or press ESC to go back`;
+    }
+
+    async turnGalleryZoomPage(delta) {
+
+        const nextPage = this.galleryZoomPage + delta;
+
+        if (nextPage < 1 || nextPage > this.numPages) return;
+
+        const key = await this.ensurePdfPageTexture(nextPage);
+
+        if (this.cancelled || !this.zoomOverlay) return;
+
+        this.galleryZoomPage = nextPage;
+
+        this.updateZoomImage(key);
+        this.zoomOverlay.hint.setText(this.galleryZoomHintText());
+
+        this.updateGalleryZoomArrows();
+
+    }
+
+    updateGalleryZoomArrows() {
+        this.setNavArrowActive(this.zoomPrevArrow, this.galleryZoomPage > 1);
+        this.setNavArrowActive(this.zoomNextArrow, this.galleryZoomPage < this.numPages);
+    }
+
+    destroyGalleryZoomArrows() {
+
+        if (this.zoomPrevArrow) {
+            this.zoomPrevArrow.image.destroy();
+            this.zoomPrevArrow.zone.destroy();
+            this.zoomPrevArrow = null;
+        }
+
+        if (this.zoomNextArrow) {
+            this.zoomNextArrow.image.destroy();
+            this.zoomNextArrow.zone.destroy();
+            this.zoomNextArrow = null;
+        }
+
+    }
+
+    // Same triangle-arrow visual language as createNavArrow, but
+    // positioned relative to the screen itself (the zoom overlay is
+    // centered on-screen, not against contentBounds like the book/
+    // gallery arrows) and layered above the zoom backdrop/image.
+    createZoomNavArrow(direction, onTurn) {
+
+        const isNext = direction === "next";
+        const { width, height } = this.scale;
+        const y = height / 2;
+        const x = isNext ? width - ZOOM_ARROW_MARGIN : ZOOM_ARROW_MARGIN;
+
+        createPlaceholderTexture(this, ZOOM_NAV_ARROW_TEXTURE_KEY, NAV_ARROW_SIZE, NAV_ARROW_SIZE, (g, w, h) => {
+            g.fillStyle(0xe8e2d5, 0.9);
+            g.fillTriangle(w * 0.2, h * 0.12, w * 0.2, h * 0.88, w * 0.85, h * 0.5);
+        });
+
+        const image = this.add.image(x, y, ZOOM_NAV_ARROW_TEXTURE_KEY);
+        image.setDisplaySize(NAV_ARROW_SIZE, NAV_ARROW_SIZE);
+        image.setDepth(9002);
+        if (!isNext) image.setFlipX(true);
+
+        const half = NAV_ARROW_HIT_SIZE / 2;
+
+        const zone = this.add.zone(x, y, half * 2, half * 2);
+        zone.setDepth(9002);
+        zone.setInteractive({ useHandCursor: false });
+        zone.on("pointerdown", () => {
+            AudioManager.playClickSfx(this, "sfx-page-turn");
+            onTurn();
+        });
+
+        return { image, zone };
+
+    }
+
     closePageZoom() {
 
         if (!this.zoomOverlay) return;
@@ -1788,9 +2026,27 @@ export default class TakeoverFrameScene extends AdventureScene {
         this.zoomOverlay.domImage.destroy();
         this.zoomOverlay.hint.destroy();
 
+        this.destroyGalleryZoomArrows();
+
         this.cursor.setZooming(false);
 
         this.zoomOverlay = null;
+
+    }
+
+    // Closes whatever zoom is open — for a PDF_GALLERY document specifically,
+    // that means going all the way back to the gallery of previews in this
+    // same action (see onEscape's own comment for why: its zoom is the
+    // reading view, not a detour from an otherwise-browsable book spread
+    // the way Resume's is). Shared by the zoom backdrop's own click-to-close
+    // and onEscape, so both behave identically.
+    closeZoomOrReturn() {
+
+        this.closePageZoom();
+
+        if (this.pdfGalleryFullViewActive) {
+            this.closeFullPdf();
+        }
 
     }
 

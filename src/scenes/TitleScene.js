@@ -13,7 +13,6 @@ export default class TitleScene extends Phaser.Scene {
         this.options = [
             { text: "New Visitor", enabled: true },
             { text: "Continue", enabled: SaveManager.hasSave() },
-            { text: "Portfolio Mode", enabled: true },
         ];
 
         this.add.text(width / 2, 100, "Daniel.design.exe", {
@@ -40,6 +39,19 @@ export default class TitleScene extends Phaser.Scene {
         });
 
         this.updateMenu();
+
+        this.add.text(
+            width / 2,
+            460,
+            "This interactive portfolio is inspired by SNES RPGs and point-and-click adventure games of the 1990s. It requires a MOUSE and KEYBOARD to play.",
+            {
+                fontFamily: "monospace",
+                fontSize: "14px",
+                color: "#888888",
+                align: "center",
+                wordWrap: { width: width * 0.8 }
+            }
+        ).setOrigin(0.5);
 
         this.input.keyboard.on("keydown-UP", () => this.move(-1));
         this.input.keyboard.on("keydown-W", () => this.move(-1));
@@ -70,10 +82,6 @@ export default class TitleScene extends Phaser.Scene {
         switch (this.options[this.selected].text) {
             case "New Visitor":
                 this.scene.start("Name");
-                break;
-
-            case "Portfolio Mode":
-                console.log("Portfolio Mode");
                 break;
 
             case "Continue":

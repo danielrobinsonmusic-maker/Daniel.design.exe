@@ -32,17 +32,32 @@ const library = [
         // case-insensitive) filename list rather than something
         // discovered on the fly.
         files: [
-            "_ Content Design Spec_ Chapters on Podcasts.pdf",
-            "Content Design Spec_ Alt-Casts_.pdf",
-            "Content Design Spec_ Multiview.pdf",
-            "Live interactive moments_Real-time voting Content Design Strategy & Spec (WIP).pdf"
+            "Alternative Broadcasts.pdf",
+            "Multiview.pdf",
+            "Podcast Chapters.pdf",
+            "Real-Time Voting.pdf"
         ]
     },
     {
-        id: "case-studies",
-        title: "Case Studies",
-        type: ContentType.GALLERY,
-        folder: "case-studies"
+        id: "portfolio",
+        title: "Portfolio",
+        type: ContentType.PDF_GALLERY,
+        // Capital "Portfolio" matches the actual folder name on disk
+        // (case-sensitive on the static host this deploys to, even though
+        // it resolves either way locally on a case-insensitive filesystem
+        // — same gotcha as the Workshop's "Computer" folder/News's own).
+        folder: "documents/Portfolio",
+        files: [
+            "Moments on Netflix.pdf",
+            "Netflix Live Waiting Room Framework.pdf",
+            "Real-time Voting.pdf"
+        ],
+        // Shown as a final "page" once the player has browsed past the
+        // last real document (see TakeoverFrameScene's
+        // renderPdfGalleryItem/displayPdfGalleryOutro) — reachable by
+        // continuing to click "next" past the 3rd file, same as any other
+        // page in this same browsing carousel.
+        outro: "For more information and details on these case studies, as well as a full portfolio to browse, visit danielrobinson.design"
     },
     {
         id: "news",

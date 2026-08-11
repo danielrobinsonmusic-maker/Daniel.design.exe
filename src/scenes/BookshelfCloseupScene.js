@@ -10,16 +10,12 @@ const NATIVE_WIDTH = 1672;
 const NATIVE_HEIGHT = 941;
 const BACKDROP_KEY = "library-bookshelf-closeup";
 
-// Hitbox fractions measured directly against the art. Portfolio has no
-// single matching document in src/data/library.js, so it points at
-// "case-studies" (the closest existing match, same mapping as before) —
-// flag for confirmation/adjustment. "News and Featured Work" is a new
-// library.js entry (GALLERY type, "coming soon" placeholder like
-// case-studies) since no real source content exists yet either — same
-// flag.
+// Hitbox fractions measured directly against the art. "News and Featured
+// Work" is a library.js entry with no real source content yet (GALLERY
+// type, "coming soon" placeholder) — flag for confirmation/adjustment.
 const SPINES = [
     { libraryId: "resume", label: "Resume", xRange: [0.22, 0.34], yRange: [0.32, 0.58] },
-    { libraryId: "case-studies", label: "Portfolio", xRange: [0.36, 0.48], yRange: [0.32, 0.58] },
+    { libraryId: "portfolio", label: "Portfolio", xRange: [0.36, 0.48], yRange: [0.32, 0.58] },
     { libraryId: "writing", label: "Writing Samples", xRange: [0.50, 0.62], yRange: [0.32, 0.58] },
     { libraryId: "news", label: "News and Featured Work", xRange: [0.64, 0.76], yRange: [0.32, 0.58] }
 ];

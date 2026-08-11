@@ -21,17 +21,22 @@ const SLIDESHOW_CONTENT = {
     folder: "images/gallery",
     files: [
         "Adventurers.JPG",
-        "IMG_0115.PNG",
-        "IMG_0623.JPG",
-        "IMG_4329.jpeg",
-        "IMG_8055.JPG",
-        "IMG_8191.JPG",
+        "Facebook Laptop.JPG",
+        "Facebook Laptops.JPG",
+        "Horizon Worlds.JPG",
         "Japanese Garden Tokyo.jpeg",
+        "Netflix Red Carpet.PNG",
         "Northern Michigan.jpg",
         "Signage.jpeg",
+        "The Other Real Workshop.JPG",
         "The Real Ed the Cat.JPG",
         "The Real Workshop.JPG",
         "Tokyo.jpeg",
+        "Torii.JPG",
+        "Venice Canals.JPG",
+        "Venice Flowers.JPG",
+        "Venice.JPG",
+        "Water Bottles.jpeg",
         "Yellow Swallowtail.jpeg"
     ]
 };

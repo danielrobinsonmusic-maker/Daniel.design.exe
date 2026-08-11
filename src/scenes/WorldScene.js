@@ -75,7 +75,11 @@ const MURRAY_LINES = [
     "He says LeChuck owes him a few pieces o' eight...",
     "He told me to ask him about Loom...",
     "He said Stan sold his boat...",
-    "He said he likes this game better than Monkey Island 6..."
+    "He said he likes this game better than Monkey Island 6...",
+    "He said he's between two ferns...",
+    "He said he left his body with Herman Toothrot...",
+    "He said Disney own's his likeness now...",
+    "He said I fight like a \"dairy-producing bovine\"..."
 ];
 
 // Fountain ambience — only while the player's own tile is within the town
