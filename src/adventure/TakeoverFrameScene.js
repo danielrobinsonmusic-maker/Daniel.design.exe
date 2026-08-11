@@ -537,22 +537,66 @@ export default class TakeoverFrameScene extends AdventureScene {
         const centerX = this.contentBounds.centerX;
         const centerY = top + (maxHeight / 2);
 
-        const fitToContentArea = (vid) => {
-            const scale = Math.min(maxWidth / vid.width, maxHeight / vid.height);
-            vid.setDisplaySize(vid.width * scale, vid.height * scale);
+        // Reads the native <video> element's own videoWidth/videoHeight
+        // (not vid.width/vid.height, which only reflect the FIRST clip —
+        // see below) so this re-fits correctly for every clip in the
+        // playlist, not just the first. Contain-fits either way: a
+        // vertical/portrait clip (e.g. a phone-shot video, much taller
+        // than wide) naturally ends up narrower than maxWidth and centers
+        // itself in the leftover horizontal space, no separate
+        // portrait-vs-landscape branch needed.
+        const fitToContentArea = () => {
+            const vw = video.video.videoWidth;
+            const vh = video.video.videoHeight;
+            if (!vw || !vh) return;
+            const scale = Math.min(maxWidth / vw, maxHeight / vh);
+            video.setDisplaySize(vw * scale, vh * scale);
         };
 
         const video = this.add.video(centerX, centerY, keys[0]);
         video.setDepth(1);
-        video.on("created", (vid) => fitToContentArea(vid));
+
+        // Needs BOTH listeners, not just one — confirmed empirically
+        // (a portrait-video playlist where the two clips aren't quite the
+        // same resolution exposed this):
+        //  - Phaser's own "created" (VIDEO_CREATED) fires exactly once,
+        //    for the very first clip only (it reuses the same underlying
+        //    <video> element across changeSource() calls, so the internal
+        //    newVideo check never re-triggers) — but it's the one that
+        //    fires AFTER Phaser's own setSizeToFrame() call resets the
+        //    game object back to the video's native pixel size, so it's
+        //    needed to re-apply our own fit for clip 1.
+        //  - The native "loadedmetadata" DOM event fires again on every
+        //    later changeSource(), which "created" does not — needed to
+        //    fit clip 2 onward. It fires BEFORE Phaser's own reset on
+        //    clip 1 though, so it alone isn't enough for clip 1 (its fit
+        //    gets clobbered moments later by that reset).
+        // Together they cover every clip correctly regardless of how many
+        // share a resolution.
+        video.on("created", fitToContentArea);
+        video.video.addEventListener("loadedmetadata", fitToContentArea);
 
         let index = 0;
 
         // Wraps back to keys[0] once the last clip finishes — "loop, back
         // to back" over the whole set, not just looping a single clip.
+        // changeSource() is a silent no-op when asked to reload whatever
+        // key is already loaded (checked internally: `if (this.cacheKey
+        // !== key)`) — for a single-video "playlist" (e.g. this content
+        // type's only other current use, netflix-moments) that means
+        // wrapping from keys[0] back to keys[0] would otherwise do
+        // nothing, leaving the video paused dead on its last frame
+        // forever instead of looping. Restart in place instead whenever
+        // the "next" clip is the one already loaded.
         video.on("complete", () => {
             index = (index + 1) % keys.length;
-            video.changeSource(keys[index], true, false);
+            const nextKey = keys[index];
+            if (video.getVideoKey() === nextKey) {
+                video.setCurrentTime(0);
+                video.play(false);
+            } else {
+                video.changeSource(nextKey, true, false);
+            }
         });
 
         video.play(false);

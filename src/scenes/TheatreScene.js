@@ -23,11 +23,15 @@ const POSTERS = [
 ];
 const POSTER_Y_RANGE = [0.12, 0.52];
 
-// nfl-squidgame has no `title` in data/movies.js (deliberately — see that
-// file's own comment, a title there would shrink the video player) but
-// the poster art itself is painted with "NFL X SQUIDGAME", so the hover
-// verb can still show a real title without touching that data shape.
+// None of the four movies carry a `title` in data/movies.js anymore
+// (deliberately — see that file's own comment, a title there would
+// shrink the video player) but the hover verb can still show a real name
+// without touching that data shape by falling back to one here instead.
 const FALLBACK_MOVIE_TITLES = {
+    "realtime-voting": "Real-Time Voting",
+    "storytime-portal": "Story-Time on Portal",
+    "netflix-moments": "Netflix Moments",
+    // The poster art itself is painted with "NFL X SQUIDGAME".
     "nfl-squidgame": "NFL x Squidgame"
 };
 
