@@ -91,6 +91,51 @@ function addSway(scene, target, tileX, tileY) {
 
 }
 
+// Murray's own idle animation — a quick side-to-side rock (angle) plus a
+// small vertical hop, paused briefly between bounces so he reads as
+// hopping in place rather than continuously bobbing like a buoy. Faster/
+// wider than the trees' stately addSway above, since he's meant to read
+// as goofy, not stately. Fixed constants rather than hashTile-randomized
+// per-tile like addSway/pickTreeSizeScale — those exist to keep many
+// same-textured instances (trees, fireflies) from moving in lockstep,
+// which doesn't apply here since Murray is the only instance.
+// Rotation pivots from the sprite's own origin (already bottom-center —
+// his feet), so he wobbles in place instead of swinging from the middle;
+// the hop tweens y directly (not a separate offset), which is fine for
+// depth-sorting since updateDepthSorting() re-reads object.y fresh every
+// frame anyway — his resolved depth just rises and falls smoothly with
+// the hop instead of going stale.
+const MURRAY_WOBBLE_ANGLE = 8;
+const MURRAY_WOBBLE_HALF_CYCLE = 260;
+const MURRAY_HOP_HEIGHT = 6;
+const MURRAY_HOP_DURATION = 220;
+const MURRAY_HOP_REPEAT_DELAY = 550;
+
+function addMurrayAnimation(scene, sprite) {
+
+    scene.tweens.add({
+        targets: sprite,
+        angle: { from: -MURRAY_WOBBLE_ANGLE, to: MURRAY_WOBBLE_ANGLE },
+        duration: MURRAY_WOBBLE_HALF_CYCLE,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut"
+    });
+
+    const groundY = sprite.y;
+
+    scene.tweens.add({
+        targets: sprite,
+        y: groundY - MURRAY_HOP_HEIGHT,
+        duration: MURRAY_HOP_DURATION,
+        yoyo: true,
+        repeat: -1,
+        repeatDelay: MURRAY_HOP_REPEAT_DELAY,
+        ease: "Sine.easeOut"
+    });
+
+}
+
 // Extra tiles of height added above a building's footprint so there's
 // room for a peaked roof + front facade in the eventual real art.
 const ROOF_EXTRA_TILES = 3;
@@ -385,7 +430,9 @@ export default class WorldObjects {
 
         DECOR.forEach((item) => {
             const sprite = this.createDecor(item);
-            if (sprite) objects.push(sprite);
+            if (!sprite) return;
+            objects.push(sprite);
+            if (item.type === "murray") addMurrayAnimation(this.scene, sprite);
         });
 
         return objects;
