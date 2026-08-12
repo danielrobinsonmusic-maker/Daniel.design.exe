@@ -90,10 +90,13 @@ const FIREWORK_LAUNCH_MAX_DELAY = 7000;
 const FIREWORK_LAUNCH_MIN_DURATION = 700;
 const FIREWORK_LAUNCH_MAX_DURATION = 1000;
 // Fraction of canvas height the rocket starts from — a small random band
-// around the middle rather than one fixed row, so consecutive launches
-// don't all start from the exact same point.
-const FIREWORK_LAUNCH_START_Y_MIN_FRACTION = 0.48;
-const FIREWORK_LAUNCH_START_Y_MAX_FRACTION = 0.56;
+// within the middle third of the screen (0.333-0.667) rather than one
+// fixed row, so consecutive launches don't all start from the exact same
+// point. Kept toward the upper part of that middle third specifically so
+// the start point sits above the backdrop's tree line rather than looking
+// like it's launching out of the trees.
+const FIREWORK_LAUNCH_START_Y_MIN_FRACTION = 0.36;
+const FIREWORK_LAUNCH_START_Y_MAX_FRACTION = 0.44;
 // Fraction of the launch's own duration spent fading in from invisible —
 // the back end of the climb stays fully visible.
 const FIREWORK_FADE_IN_FRACTION = 0.4;
