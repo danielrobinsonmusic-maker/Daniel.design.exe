@@ -52,8 +52,7 @@ export const WORKSHOP_CONTENT = [
             "Tree 1.png",
             "Tree 2.png",
             "Tree 3.png",
-            "Tree 4.png",
-            "Walking Animation.png"
+            "Tree 4.png"
         ]
     },
     {
