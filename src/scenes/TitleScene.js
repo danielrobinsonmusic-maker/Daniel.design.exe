@@ -38,6 +38,12 @@ export default class TitleScene extends Phaser.Scene {
             this.menuTexts.push(text);
         });
 
+        this.hintText = this.add.text(width / 2, 300, "", {
+            fontFamily: "monospace",
+            fontSize: "16px",
+            color: "#aaaaaa",
+        }).setOrigin(0.5);
+
         this.updateMenu();
 
         this.add.text(
@@ -76,6 +82,16 @@ export default class TitleScene extends Phaser.Scene {
             const prefix = i === this.selected ? "▶ " : "   ";
             text.setText(prefix + this.options[i].text);
         });
+
+        // move()'s own while-loop never lands `selected` on a disabled
+        // option (Continue is skipped over entirely when there's no
+        // save), so reaching the "Continue" case here already implies
+        // it's available — no separate enabled check needed.
+        const hint = this.options[this.selected].text === "Continue"
+            ? "Press Enter to continue."
+            : "Press Enter to begin.";
+
+        this.hintText.setText(hint);
     }
 
     select() {
