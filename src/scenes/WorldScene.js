@@ -83,6 +83,14 @@ const MURRAY_LINES = [
     "He said Disney own's his likeness now...",
     "He said I fight like a \"dairy-producing bovine\"..."
 ];
+// Value is an array of MURRAY_LINES indices heard at least once (not a
+// plain boolean per line — one flag key instead of nine), maintained by
+// updateMurrayInteraction below. Once every index is present,
+// MURRAY_ALL_LINES_HEARD_FLAG fires (exactly once — see the completion
+// check) and permanently swaps Town's music to MI.mp3, see
+// AudioManager.playTownMIMusic.
+const MURRAY_LINES_HEARD_FLAG = "murray.lines-heard";
+const MURRAY_ALL_LINES_HEARD_FLAG = "murray.all-lines-heard";
 
 // Fountain ambience — only while the player's own tile is within the town
 // square rectangle (TOWN_SQUARE_BOUNDS covers the whole plaza the
@@ -91,6 +99,19 @@ const MURRAY_LINES = [
 // needing a separate, narrower zone of its own.
 const FOUNTAIN_SFX_KEY = "sfx-fountain";
 const FOUNTAIN_SFX_VOLUME = 0.5;
+
+// "Make a wish" interaction — a single point one tile south of the
+// fountain's obstacle block (which spans FOUNTAIN_TILE.y-1 to
+// FOUNTAIN_TILE.y+2, see the createObstacle loop below), same
+// "interaction zone is the open walkable tile just past the obstacle"
+// convention as CATHOUSE_ZONE/MURRAY_ZONE above. Only placed south of the
+// fountain (not all four sides) since that's specifically what was asked
+// for, and the zone system's distance<=1 check naturally limits it to
+// that side without needing any extra direction-facing logic.
+const FOUNTAIN_WISH_ZONE = { x: FOUNTAIN_TILE.x, y: FOUNTAIN_TILE.y + 3, name: "FountainWish" };
+const FOUNTAIN_WISH_THINKING_DURATION = 900;
+const FOUNTAIN_WISH_LINE_DURATION = 2800;
+const FOUNTAIN_WISH_LINE = "I feel free...";
 
 export default class WorldScene extends Phaser.Scene {
     constructor() {
@@ -110,6 +131,15 @@ export default class WorldScene extends Phaser.Scene {
         // the whole time the player was inside a building.
         AudioManager.playArea(this, "town");
         AudioManager.stopBuildingMusic();
+
+        // Resumes on MI.mp3 (instead of Town.mp3) if this was already
+        // unlocked in an earlier session — playTownMIMusic no-ops on every
+        // call after the first, so this is safe to call unconditionally
+        // on every create() re-run rather than only right after the flag
+        // was just set (see updateMurrayInteraction for that call site).
+        if (SaveManager.hasFlag(MURRAY_ALL_LINES_HEARD_FLAG)) {
+            AudioManager.playTownMIMusic(this);
+        }
 
         // generate map data
         this.mapData = createTownSquare();
@@ -262,7 +292,8 @@ export default class WorldScene extends Phaser.Scene {
             { x: 58, y: 11 + NORTH_BUFFER_ROWS, name: "Café" },
             { x: 37, y: 1 + NORTH_BUFFER_ROWS, name: "Woods" },
             CATHOUSE_ZONE,
-            MURRAY_ZONE
+            MURRAY_ZONE,
+            FOUNTAIN_WISH_ZONE
         ];
 
         // Edison's zone only gets added once the achievement is already
@@ -293,6 +324,7 @@ export default class WorldScene extends Phaser.Scene {
         // fresh from MURRAY_LINES on every interaction instead of being
         // fixed.
         this.murrayState = "idle"; // "idle" -> "thinking" -> "line" -> "idle"
+        this.fountainWishState = "idle"; // "idle" -> "thinking" -> "line" -> "idle"
 
         // Edison: false until E is pressed once in range, then shows the
         // line instead of the "Press E to talk" prompt for a beat — same
@@ -417,6 +449,11 @@ updateInteractions() {
         return;
     }
 
+    if (target.name === "FountainWish") {
+        this.updateFountainWishInteraction(hud);
+        return;
+    }
+
     hud.showInteraction(target.name);
 
     if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
@@ -526,6 +563,54 @@ updateEdisonInteraction(hud) {
 
 }
 
+// Same "..." thinking beat -> one-off flavor line -> revert-to-idle shape
+// as updateCathouseInteraction below, with the coin/splash sfx (see
+// AudioManager.playWishSfx) fired at the same moment the "..." beat
+// starts. Approaching again after the line clears replays the whole
+// "..." -> line sequence (and sfx) rather than staying stuck or needing
+// a second press.
+updateFountainWishInteraction(hud) {
+
+    const justPressed = Phaser.Input.Keyboard.JustDown(this.interactKey);
+
+    if (this.fountainWishState === "idle") {
+
+        hud.showInteraction("Fountain", "Press [E] to make a wish.");
+
+        if (justPressed) {
+
+            AudioManager.playWishSfx(this);
+
+            this.fountainWishState = "thinking";
+            hud.showInteraction("Fountain", "...");
+
+            this.time.delayedCall(FOUNTAIN_WISH_THINKING_DURATION, () => {
+                if (this.fountainWishState !== "thinking") return;
+
+                this.fountainWishState = "line";
+
+                this.time.delayedCall(FOUNTAIN_WISH_LINE_DURATION, () => {
+                    if (this.fountainWishState === "line") {
+                        this.fountainWishState = "idle";
+                    }
+                });
+
+            });
+
+        }
+
+    } else if (this.fountainWishState === "thinking") {
+
+        hud.showInteraction("Fountain", "...");
+
+    } else if (this.fountainWishState === "line") {
+
+        hud.showInteraction("Fountain", FOUNTAIN_WISH_LINE);
+
+    }
+
+}
+
 // Same "..." thinking beat as the Woods (see updateWoodsInteraction)
 // before the payoff line appears, but the payoff here is a one-off flavor
 // line rather than a new actionable prompt — it reverts back to "idle" on
@@ -612,7 +697,23 @@ updateMurrayInteraction(hud) {
                 if (this.murrayState !== "thinking") return;
 
                 this.murrayState = "line";
-                this.murrayLine = Phaser.Utils.Array.GetRandom(MURRAY_LINES);
+
+                const lineIndex = Phaser.Math.Between(0, MURRAY_LINES.length - 1);
+                this.murrayLine = MURRAY_LINES[lineIndex];
+
+                const heardIndices = SaveManager.getFlags()[MURRAY_LINES_HEARD_FLAG] || [];
+
+                if (!heardIndices.includes(lineIndex)) {
+
+                    const updatedIndices = [...heardIndices, lineIndex];
+                    SaveManager.setFlag(MURRAY_LINES_HEARD_FLAG, updatedIndices);
+
+                    if (updatedIndices.length === MURRAY_LINES.length && !SaveManager.hasFlag(MURRAY_ALL_LINES_HEARD_FLAG)) {
+                        SaveManager.setFlag(MURRAY_ALL_LINES_HEARD_FLAG);
+                        AudioManager.playTownMIMusic(this);
+                    }
+
+                }
 
                 this.time.delayedCall(MURRAY_LINE_DURATION, () => {
                     if (this.murrayState === "line") {

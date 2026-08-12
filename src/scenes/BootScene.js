@@ -165,6 +165,13 @@ export default class BootScene extends Phaser.Scene {
         // -------------------------------------------------
 
         this.load.audio("music-town", "assets/audio/music/Town.mp3");
+        // Permanently replaces music-town as Town's own music layer once
+        // the player has heard every one of Murray's flavor lines at least
+        // once (see WorldScene's MURRAY_ALL_LINES_HEARD_FLAG and
+        // AudioManager.playTownMIMusic) — not a building/area track of its
+        // own, hence living right next to music-town rather than down with
+        // the per-building tracks below.
+        this.load.audio("music-town-mi", "assets/audio/music/MI.mp3");
         this.load.audio("music-overlook", "assets/audio/music/Overlook.mp3");
         this.load.audio("ambient-town", "assets/audio/ambient/town-ambient.mp3");
         this.load.audio("ambient-overlook", "assets/audio/ambient/overlook-ambient.mp3");
@@ -206,6 +213,12 @@ export default class BootScene extends Phaser.Scene {
         // petCat hitbox, plus Edison in WorldScene — also a cat, see
         // AudioManager.playCatSfx) uses this instead of the generic click.
         this.load.audio("sfx-cat", "assets/audio/sfx/cat.mp3");
+        // Fountain "make a wish" interaction (see WorldScene's
+        // updateFountainWishInteraction / AudioManager.playWishSfx) — two
+        // separate files chained one after the other, not a single
+        // pre-mixed clip.
+        this.load.audio("sfx-coin", "assets/audio/sfx/coin.mp3");
+        this.load.audio("sfx-coin-splash", "assets/audio/sfx/coinsplash.mp3");
 
         for (let i = 0; i < 10; i++) {
             this.load.audio(`sfx-footstep-${i}`, `assets/audio/sfx/footstep${String(i).padStart(2, "0")}.ogg`);

@@ -27,7 +27,7 @@ const SLIDESHOW_CONTENT = {
         "Facebook Laptops.JPG",
         "Horizon Worlds.JPG",
         "Japanese Garden Tokyo.jpeg",
-        "Netflix Red Carpet.PNG",
+        "Netflix_Red_Carpet.jpg",
         "Northern Michigan.jpg",
         "Signage.jpeg",
         "The Other Real Workshop.JPG",

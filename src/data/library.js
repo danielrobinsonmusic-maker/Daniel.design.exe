@@ -32,10 +32,10 @@ const library = [
         // case-insensitive) filename list rather than something
         // discovered on the fly.
         files: [
-            "Alternative Broadcasts.pdf",
-            "Multiview.pdf",
-            "Podcast Chapters.pdf",
-            "Real-Time Voting.pdf"
+            "Alternative_Broadcasts.pdf",
+            "Multiview_.pdf",
+            "Podcast_Chapters.pdf",
+            "Real-Time_Voting.pdf"
         ]
     },
     {

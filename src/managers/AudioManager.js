@@ -61,6 +61,12 @@ const BUILDING_MUSIC = {
 let sounds = {};
 let currentArea = null;
 
+// Set once playTownMIMusic actually swaps Town's music layer — guards
+// against re-swapping (and re-stopping/restarting the track) on every one
+// of WorldScene's repeated per-session calls once the player has already
+// unlocked it (see that method's own comment).
+let townMusicUnlocked = false;
+
 // The one currently-playing building music Sound (if any) and which
 // building it belongs to — separate from `sounds` above since it isn't
 // tied to an area's own layer set, just swapped in over it.
@@ -102,7 +108,9 @@ const SFX = {
     VIEWER_CLOSE: "sfx-viewer-close",
     PAGE_TURN: "sfx-page-turn",
     ACHIEVEMENT: "sfx-achievement",
-    CAT: "sfx-cat"
+    CAT: "sfx-cat",
+    COIN: "sfx-coin",
+    COIN_SPLASH: "sfx-coin-splash"
 };
 
 // Entering these buildings specifically swaps out the generic transition
@@ -215,6 +223,37 @@ export default class AudioManager {
             layer.sound.play();
         } else {
             layer.sound.stop();
+        }
+
+    }
+
+    // Permanently swaps Town's own music layer from Town.mp3 to MI.mp3
+    // once the player has heard every one of Murray's flavor lines at
+    // least once — called both at the moment that actually happens (from
+    // WorldScene's line-picking code) and, unconditionally, every time
+    // WorldScene re-enters "town" (so a save where this was already
+    // unlocked in an earlier session starts back up on MI.mp3 rather than
+    // Town.mp3, same "checked fresh, stays on forever after" pattern as
+    // the Overlook's own achievement-driven backdrop swap). The
+    // townMusicUnlocked guard is what makes the second call site safe to
+    // call every single time rather than only on the one call that
+    // actually completes it — this doesn't restart the track on repeat
+    // calls. Town's ambient layer is untouched, same "only the music
+    // layer swaps" convention as playBuildingMusic.
+    static playTownMIMusic(scene) {
+
+        if (townMusicUnlocked) return;
+
+        const layer = sounds.town?.find((l) => l.role === "music");
+        if (!layer) return;
+
+        townMusicUnlocked = true;
+
+        layer.sound?.stop();
+        layer.sound = this.createLoop(scene, { key: "music-town-mi", volume: 0.125 });
+
+        if (currentArea === "town") {
+            layer.sound?.play();
         }
 
     }
@@ -360,6 +399,25 @@ export default class AudioManager {
     // such hook to plug into.
     static playCatSfx(scene) {
         this.playSfx(scene, SFX.CAT);
+    }
+
+    // Fountain "make a wish" interaction (WorldScene's
+    // updateFountainWishInteraction) — two distinct clips played back to
+    // back rather than one pre-mixed file, so this needs an actual Sound
+    // instance (not the fire-and-forget scene.sound.play() every other SFX
+    // method here uses) to listen for the coin's own "complete" event and
+    // only then start the splash, rather than guessing its duration with a
+    // timer.
+    static playWishSfx(scene) {
+
+        if (!scene.cache.audio.exists(SFX.COIN)) return;
+
+        const coin = scene.sound.add(SFX.COIN, { volume: SFX_VOLUME });
+
+        coin.once("complete", () => this.playSfx(scene, SFX.COIN_SPLASH));
+
+        coin.play();
+
     }
 
     // A random footstep file each call, never the same one twice in a row

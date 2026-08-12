@@ -724,7 +724,7 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         this.videoGalleryObjects.push(video);
 
-        const title = filename.replace(/\.[^./\\]+$/, "");
+        const title = filename.replace(/\.[^./\\]+$/, "").replace(/_/g, " ").trim();
 
         const label = this.add.text(centerX, centerY, title, {
             fontFamily: "monospace",
@@ -1361,7 +1361,7 @@ export default class TakeoverFrameScene extends AdventureScene {
         const maxWidth = safeRight - safeLeft;
         const centerX = (safeLeft + safeRight) / 2;
 
-        const title = filename.replace(/\.[^./\\]+$/, "");
+        const title = filename.replace(/\.[^./\\]+$/, "").replace(/_/g, " ").trim();
 
         const caption = this.add.text(centerX, 0, title, {
             fontFamily: "monospace",
@@ -2241,7 +2241,7 @@ export default class TakeoverFrameScene extends AdventureScene {
         const safeBottom = bottom - GALLERY_PADDING;
         const maxWidth = (right - left) - (GALLERY_PADDING * 2);
 
-        const title = filename.replace(/\.[^./\\]+$/, "");
+        const title = filename.replace(/\.[^./\\]+$/, "").replace(/_/g, " ").trim();
 
         // Created first (off-screen position, repositioned below) purely
         // to measure its real rendered height — a fixed guess would
