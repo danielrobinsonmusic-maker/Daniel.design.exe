@@ -105,7 +105,12 @@ export default class TitleScene extends Phaser.Scene {
                 break;
 
             case "Continue":
-                console.log("Continue");
+                // No SaveManager.save() call here, unlike NameScene's own
+                // "New Visitor" path — that's specifically what would
+                // overwrite the existing save's name/flags. Continue's
+                // whole point is resuming with what's already there.
+                AudioManager.stopOnboardingMusic();
+                this.scene.start("World");
                 break;
         }
     }
