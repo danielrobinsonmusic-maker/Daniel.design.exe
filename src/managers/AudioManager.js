@@ -23,6 +23,12 @@
 // beds both stay at the original 0.5. Volumes exceeding 1 are intentional,
 // not a bug — Web Audio gain nodes support boosting past unity, requested
 // explicitly rather than clamped to 1.
+// 100% louder than Town's own music-town volume (0.125 -> 0.25) — an
+// explicit, one-off request specific to MI.mp3 only, not a general
+// "town music" level change (music-town's own volume above, and every
+// other track/sfx volume in this file, stays exactly as-is).
+const TOWN_MI_MUSIC_VOLUME = 0.25;
+
 const AREA_TRACKS = {
     town: {
         layers: [
@@ -250,7 +256,7 @@ export default class AudioManager {
         townMusicUnlocked = true;
 
         layer.sound?.stop();
-        layer.sound = this.createLoop(scene, { key: "music-town-mi", volume: 0.125 });
+        layer.sound = this.createLoop(scene, { key: "music-town-mi", volume: TOWN_MI_MUSIC_VOLUME });
 
         if (currentArea === "town") {
             layer.sound?.play();

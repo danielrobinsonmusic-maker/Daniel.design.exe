@@ -74,10 +74,18 @@ async function processFile(filePath) {
         return null;
     }
 
-    // withoutEnlargement means this resize is a no-op for anything already
-    // under MAX_DIMENSION wide — safe to call unconditionally rather than
-    // checking metadata.width first.
-    const pipeline = sharp(filePath).resize({
+    // .rotate() with no arguments must come first: it auto-orients using
+    // the source's EXIF Orientation tag (sharp does NOT do this by
+    // default) and bakes the correction into the actual pixel data. Every
+    // encoder below strips metadata on output (no withMetadata() call),
+    // so skipping this step doesn't just leave the orientation tag
+    // behind for a viewer to apply — it discards the only record of which
+    // way the image was supposed to be read, silently baking in whatever
+    // raw sensor rotation the camera happened to capture. withoutEnlargement
+    // means the resize is a no-op for anything already under MAX_DIMENSION
+    // wide — safe to call unconditionally rather than checking metadata.width
+    // first.
+    const pipeline = sharp(filePath).rotate().resize({
         width: MAX_DIMENSION,
         withoutEnlargement: true
     });

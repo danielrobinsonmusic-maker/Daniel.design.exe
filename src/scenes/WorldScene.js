@@ -80,7 +80,7 @@ const MURRAY_LINES = [
     "He said he likes this game better than Monkey Island 6...",
     "He said he's between two ferns...",
     "He said he left his body with Herman Toothrot...",
-    "He said Disney own's his likeness now...",
+    "He said Disney owns his likeness now...",
     "He said I fight like a \"dairy-producing bovine\"..."
 ];
 // Value is an array of MURRAY_LINES indices heard at least once (not a
