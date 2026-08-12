@@ -43,8 +43,9 @@ export default class TitleScene extends Phaser.Scene {
 
         this.hintText = this.add.text(width / 2, 300, "", {
             fontFamily: "monospace",
-            fontSize: "16px",
+            fontSize: "15px",
             color: "#aaaaaa",
+            align: "center",
         }).setOrigin(0.5);
 
         this.updateMenu();
@@ -91,8 +92,8 @@ export default class TitleScene extends Phaser.Scene {
         // save), so reaching the "Continue" case here already implies
         // it's available — no separate enabled check needed.
         const hint = this.options[this.selected].text === "Continue"
-            ? "Press Enter to continue."
-            : "Press Enter to begin.";
+            ? "Press ENTER to continue"
+            : "Press ENTER to begin";
 
         this.hintText.setText(hint);
     }
