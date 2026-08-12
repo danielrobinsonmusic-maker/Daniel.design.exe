@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import SaveManager from "../managers/SaveManager";
+import AudioManager from "../managers/AudioManager";
 
 export default class NameScene extends Phaser.Scene {
 
@@ -11,6 +12,11 @@ export default class NameScene extends Phaser.Scene {
     create() {
 
         const { width } = this.scale;
+
+        // Same track TitleScene started — playOnboardingMusic no-ops if
+        // it's already playing, so this continues it uninterrupted rather
+        // than restarting from 0.
+        AudioManager.playOnboardingMusic(this);
 
         // Shifted up from the original 110/180/280/420 layout to leave
         // clean room below for the arrow-key diagram (see
@@ -143,6 +149,7 @@ export default class NameScene extends Phaser.Scene {
     name: this.playerName
 });
 
+AudioManager.stopOnboardingMusic();
 this.scene.start("World");
 
             }

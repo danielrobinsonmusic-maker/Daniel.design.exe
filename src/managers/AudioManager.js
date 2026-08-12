@@ -79,6 +79,11 @@ let townMusicUnlocked = false;
 let buildingSound = null;
 let currentBuilding = null;
 
+// Title/Name onboarding music — its own standalone Sound reference (not
+// an "area" like town/overlook, not building music), so playOnboardingMusic
+// can guard against restarting it on the Title -> Name transition.
+let onboardingSound = null;
+
 // Sound instances pauseAll() paused, so resumeAll() only resumes exactly
 // those — not anything that happens to start playing in between (e.g. an
 // area switch that occurs while a viewer is still on screen).
@@ -261,6 +266,31 @@ export default class AudioManager {
         if (currentArea === "town") {
             layer.sound?.play();
         }
+
+    }
+
+    // Called from both TitleScene and NameScene's create() — the
+    // onboardingSound guard means the first call (Title) actually starts
+    // it and the second (Name, right after "New Visitor" is picked) is a
+    // no-op, so the same Sound instance just keeps playing uninterrupted
+    // across that scene transition instead of restarting from 0. Nothing
+    // else stops it automatically — NameScene's own transition into World
+    // calls stopOnboardingMusic() once a name is actually submitted (see
+    // NameScene.handleKey), since World has its own Town music/ambience
+    // via playArea and the two shouldn't overlap.
+    static playOnboardingMusic(scene) {
+
+        if (onboardingSound?.isPlaying) return;
+
+        onboardingSound = this.createLoop(scene, { key: "music-onboarding", volume: 0.5 });
+        onboardingSound?.play();
+
+    }
+
+    static stopOnboardingMusic() {
+
+        onboardingSound?.stop();
+        onboardingSound = null;
 
     }
 

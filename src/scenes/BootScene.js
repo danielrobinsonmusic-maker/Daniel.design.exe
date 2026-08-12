@@ -172,6 +172,13 @@ export default class BootScene extends Phaser.Scene {
         // own, hence living right next to music-town rather than down with
         // the per-building tracks below.
         this.load.audio("music-town-mi", "assets/audio/music/MI.mp3");
+        // Plays through both onboarding scenes (Title's New Visitor/
+        // Continue screen and the name-entry screen right after it) — see
+        // AudioManager.playOnboardingMusic, called from both TitleScene
+        // and NameScene with the same "already playing, don't restart"
+        // guard playArea's own area tracks use, so the same instance just
+        // keeps going uninterrupted across that scene transition.
+        this.load.audio("music-onboarding", "assets/audio/music/heartshapedbox.mp3");
         this.load.audio("music-overlook", "assets/audio/music/Overlook.mp3");
         this.load.audio("ambient-town", "assets/audio/ambient/town-ambient.mp3");
         this.load.audio("ambient-overlook", "assets/audio/ambient/overlook-ambient.mp3");

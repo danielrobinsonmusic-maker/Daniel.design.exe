@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import SaveManager from "../managers/SaveManager";
+import AudioManager from "../managers/AudioManager";
 
 export default class TitleScene extends Phaser.Scene {
     constructor() {
@@ -9,6 +10,8 @@ export default class TitleScene extends Phaser.Scene {
 
     create() {
         const { width } = this.scale;
+
+        AudioManager.playOnboardingMusic(this);
 
         this.options = [
             { text: "New Visitor", enabled: true },
