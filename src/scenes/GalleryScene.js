@@ -68,6 +68,19 @@ export default class GalleryScene extends AdventureScene {
         super("Gallery");
     }
 
+    // See LibraryScene's own preload() comment — same deferred-loading
+    // reasoning. gallery-frame is the frame for the "Admire the Art"
+    // viewer, reachable only from within this Room.
+    preload() {
+
+        this.showLoadingText();
+
+        this.load.image("gallery-room", "assets/scenes/gallery-room.png");
+        this.load.image("gallery-frame", "assets/scenes/gallery-frame.png");
+        this.load.audio("music-gallery", "assets/audio/music/gallery.mp3");
+
+    }
+
     buildScene() {
 
         this.backSceneKey = "World";

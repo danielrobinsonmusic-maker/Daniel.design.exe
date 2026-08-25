@@ -36,6 +36,22 @@ export default class WorkshopScene extends AdventureScene {
         super("Workshop");
     }
 
+    // See LibraryScene's own preload() comment — same deferred-loading
+    // reasoning. workshop-blueprint/computer-screen/music-player are the
+    // three viewer frames (blueprints/computer/guitar), each reachable
+    // only from within this Room.
+    preload() {
+
+        this.showLoadingText();
+
+        this.load.image("workshop-room", "assets/scenes/workshop-room.png");
+        this.load.image("workshop-blueprint", "assets/scenes/workshop-blueprint.png");
+        this.load.image("computer-screen", "assets/scenes/computer-screen.png");
+        this.load.image("music-player", "assets/scenes/music-player.png");
+        this.load.audio("music-workshop", "assets/audio/music/workshop.m4a");
+
+    }
+
     buildScene() {
 
         this.backSceneKey = "World";

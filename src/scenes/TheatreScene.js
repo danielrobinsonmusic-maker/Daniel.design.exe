@@ -43,6 +43,21 @@ export default class TheatreScene extends AdventureScene {
         super("Theatre");
     }
 
+    // See LibraryScene's own preload() comment — same deferred-loading
+    // reasoning. theatre-room-screen doubles as this Room's own projector-
+    // screen decor AND the "movie-screen" TakeoverFrame frame (see
+    // adventure/takeoverFrames.js) — one file, loaded once here either way.
+    preload() {
+
+        this.showLoadingText();
+
+        this.load.image("theatre-room", "assets/scenes/theatre-room.png");
+        this.load.image("theatre-attendant-closeup", "assets/scenes/theatre-room-closeup.png");
+        this.load.image("theatre-room-screen", "assets/scenes/theatre-room-screen.png");
+        this.load.audio("music-theatre", "assets/audio/music/theatre.mp3");
+
+    }
+
     buildScene() {
 
         this.backSceneKey = "World";

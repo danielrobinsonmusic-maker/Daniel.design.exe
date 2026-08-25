@@ -92,9 +92,36 @@ export default class AdventureScene extends Phaser.Scene {
 
     }
 
+    // Building/Overlook-specific art and music now loads in each of those
+    // scenes' own preload() instead of all up front in BootScene (see that
+    // file's own comment) — this shows a small "Loading..." label the
+    // instant preload() starts (GameObjects can be added during preload(),
+    // the scene's systems are already up by then, only its load queue is
+    // pending) so entering a building doesn't sit on a flat background
+    // color with zero feedback while its few MB download. Stored on
+    // `this` rather than returned, since create() below destroys it
+    // automatically before buildScene() runs — no subclass needs to
+    // remember to clean it up itself.
+    showLoadingText() {
+
+        const { width, height } = this.scale;
+
+        this.preloadLoadingText = this.add.text(width / 2, height / 2, "Loading...", {
+            fontFamily: "monospace",
+            fontSize: "20px",
+            color: "#aaaaaa"
+        }).setOrigin(0.5);
+
+    }
+
     create() {
 
         this.cameras.main.fadeIn(FADE_DURATION, 0, 0, 0);
+
+        if (this.preloadLoadingText) {
+            this.preloadLoadingText.destroy();
+            this.preloadLoadingText = null;
+        }
 
         // TakeoverFrameScene is the one subclass that overrides usesBar()
         // to skip this — its content-viewer screens have no dialogue/idle

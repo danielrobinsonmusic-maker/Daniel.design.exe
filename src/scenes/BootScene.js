@@ -6,7 +6,53 @@ export default class BootScene extends Phaser.Scene {
         super("Boot");
     }
 
+    // Plain Graphics/Text, no new art asset — GameObjects can be created
+    // during preload() itself (the scene's systems are already up, only
+    // its own load queue is pending), so this is visible from the very
+    // first frame of boot rather than waiting for create(). Nothing needs
+    // to destroy this explicitly: Phaser tears the whole scene down when
+    // create() calls scene.start("Title") at the end of this file.
+    createLoadingBar() {
+
+        const { width, height } = this.scale;
+        const barWidth = width * 0.5;
+        const barHeight = 18;
+        const barX = (width - barWidth) / 2;
+        const barY = height / 2 - barHeight / 2;
+
+        this.add.text(width / 2, barY - 30, "Daniel.design.exe", {
+            fontFamily: "monospace",
+            fontSize: "28px",
+            color: "#ffffff"
+        }).setOrigin(0.5);
+
+        const track = this.add.graphics();
+        track.lineStyle(2, 0x666666, 1);
+        track.strokeRect(barX, barY, barWidth, barHeight);
+
+        const fill = this.add.graphics();
+
+        const percentText = this.add.text(width / 2, barY + barHeight + 20, "0%", {
+            fontFamily: "monospace",
+            fontSize: "16px",
+            color: "#aaaaaa"
+        }).setOrigin(0.5);
+
+        this.load.on(Phaser.Loader.Events.PROGRESS, (value) => {
+
+            fill.clear();
+            fill.fillStyle(0x66ff99, 1);
+            fill.fillRect(barX + 2, barY + 2, (barWidth - 4) * value, barHeight - 4);
+
+            percentText.setText(`${Math.round(value * 100)}%`);
+
+        });
+
+    }
+
     preload() {
+
+        this.createLoadingBar();
 
         // -------------------------------------------------
         // Kenney Urban Pack
@@ -132,33 +178,26 @@ export default class BootScene extends Phaser.Scene {
         // Scenes (standalone backgrounds, not tile-based)
         // -------------------------------------------------
 
-        // Two variants — which one OverlookScene actually displays depends
-        // on the hidden five-building cat achievement (see
-        // managers/CatAchievement.js): overlook1.png (no cat) is the
-        // default, overlook.png (with the cat) only shows once all five
-        // flags are set.
-        this.load.image("overlook-bg", "assets/scenes/overlook1.png");
-        this.load.image("overlook-bg-achieved", "assets/scenes/overlook.png");
-        this.load.image("library-room", "assets/scenes/library-room.png");
-        this.load.image("library-bookshelf-closeup", "assets/scenes/library-bookshelf-closeup.png");
-        this.load.image("library-librarian-closeup", "assets/scenes/library-librarian-closeup.png");
-        this.load.image("library-book", "assets/scenes/library-book.png");
-        this.load.image("cafe-room", "assets/scenes/cafe-room.png");
-        this.load.image("cafe-barista-closeup", "assets/scenes/cafe-room-closeup.png");
-        this.load.image("workshop-room", "assets/scenes/workshop-room.png");
-        this.load.image("gallery-room", "assets/scenes/gallery-room.png");
-        this.load.image("theatre-room", "assets/scenes/theatre-room.png");
-        this.load.image("theatre-attendant-closeup", "assets/scenes/theatre-room-closeup.png");
-        this.load.image("theatre-room-screen", "assets/scenes/theatre-room-screen.png");
-
-        // TakeoverFrameScene frame art (see adventure/takeoverFrames.js) —
-        // same full-bleed, no-padding convention as the room backdrops
-        // above (confirmed via PIL: none of these four have an alpha
-        // channel), so no "content" sub-frame crop needed.
-        this.load.image("gallery-frame", "assets/scenes/gallery-frame.png");
-        this.load.image("music-player", "assets/scenes/music-player.png");
-        this.load.image("workshop-blueprint", "assets/scenes/workshop-blueprint.png");
-        this.load.image("computer-screen", "assets/scenes/computer-screen.png");
+        // Every Room/Closeup backdrop and every TakeoverFrame "frame" image
+        // used to load here unconditionally, regardless of whether the
+        // player ever entered that building — ~32.5MB across 17 files, none
+        // of it needed to reach or render the town square. Each one is now
+        // loaded by the specific scene that actually uses it, in that
+        // scene's own preload() (Phaser blocks that scene's create() until
+        // its own preload() queue finishes, same mechanism this file uses,
+        // just scoped smaller): OverlookScene loads overlook-bg/
+        // overlook-bg-achieved, LibraryScene loads library-room/
+        // library-bookshelf-closeup/library-librarian-closeup/library-book,
+        // CafeScene loads cafe-room/cafe-barista-closeup, WorkshopScene
+        // loads workshop-room/workshop-blueprint/computer-screen/
+        // music-player, GalleryScene loads gallery-room/gallery-frame,
+        // TheatreScene loads theatre-room/theatre-attendant-closeup/
+        // theatre-room-screen. Every TakeoverFrame frameKey texture is
+        // reachable from exactly one building, so bundling it into that
+        // building's own preload() means TakeoverFrameScene.js itself needs
+        // no loading logic of its own for frame art — by the time a player
+        // reaches any Takeover, they've always already passed through the
+        // owning building's Room scene first.
 
         // -------------------------------------------------
         // Audio (see managers/AudioManager.js)
@@ -185,13 +224,14 @@ export default class BootScene extends Phaser.Scene {
         this.load.audio("ambient-overlook2", "assets/audio/ambient/overlook-ambient2.mp3");
         this.load.audio("sfx-fountain", "assets/audio/sfx/fountain.mp3");
 
-        // Per-building music — each Room scene swaps this in over Town's
-        // own music layer on entry (see AudioManager.playBuildingMusic).
-        this.load.audio("music-library", "assets/audio/music/library.mp3");
-        this.load.audio("music-cafe", "assets/audio/music/cafe.mp3");
-        this.load.audio("music-workshop", "assets/audio/music/workshop.m4a");
-        this.load.audio("music-theatre", "assets/audio/music/theatre.mp3");
-        this.load.audio("music-gallery", "assets/audio/music/gallery.mp3");
+        // Per-building music (music-library/cafe/workshop/theatre/gallery —
+        // 16.72MB total, music-workshop alone is 9.93MB) used to load here
+        // too — moved to each Room scene's own preload() alongside its
+        // backdrop, same reasoning as the Scenes section above. Each Room
+        // scene swaps its own track in over Town's music layer on entry
+        // (see AudioManager.playBuildingMusic) exactly as before; it just
+        // isn't fetched over the network until that building is actually
+        // entered.
 
         // UI/interaction sfx — see managers/AudioManager.js's SFX map for
         // how each of these actually gets triggered (hover/click/scene

@@ -28,6 +28,26 @@ export default class LibraryScene extends AdventureScene {
         super("Library");
     }
 
+    // Library's own backdrop/closeup/frame art and music — used to load
+    // unconditionally in BootScene regardless of whether the player ever
+    // entered the Library, now deferred to here (see BootScene.js's own
+    // comment on the Scenes section). library-book is included here (not
+    // loaded on demand by TakeoverFrameScene itself) since it's the frame
+    // for every one of Library's own book viewers (Resume/Writing/
+    // Portfolio/News) — reachable only after passing through this Room
+    // scene first, so it's always already cached by the time it's needed.
+    preload() {
+
+        this.showLoadingText();
+
+        this.load.image("library-room", "assets/scenes/library-room.png");
+        this.load.image("library-bookshelf-closeup", "assets/scenes/library-bookshelf-closeup.png");
+        this.load.image("library-librarian-closeup", "assets/scenes/library-librarian-closeup.png");
+        this.load.image("library-book", "assets/scenes/library-book.png");
+        this.load.audio("music-library", "assets/audio/music/library.mp3");
+
+    }
+
     buildScene() {
 
         this.backSceneKey = "World";

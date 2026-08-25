@@ -685,12 +685,36 @@ export default class TakeoverFrameScene extends AdventureScene {
         // plays just fine. The {url, type} array form lets the actual
         // codec type be declared explicitly instead of sniffed from the
         // extension.
+        // Same "complete fires either way" problem as renderGalleryItem —
+        // and here this.cache.video.exists(key) is NOT a reliable success
+        // check on its own (confirmed empirically: Phaser registers a
+        // video cache entry as soon as the File is created, before its
+        // data has actually loaded, so it can read `true` even on a 404).
+        // "loaderror" firing with this key is the actual failure signal.
+        let failed = false;
+
+        const onLoadError = (file) => {
+            if (file.key === key) failed = true;
+        };
+
+        this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, onLoadError);
+
         this.load.video(key, /\.mov$/i.test(filename) ? [{ url, type: "mp4" }] : url);
         this.load.once("complete", () => {
 
-            if (token === this.videoGalleryLoadToken && this.videoGalleryLoadingText) {
+            this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onLoadError);
+
+            if (token !== this.videoGalleryLoadToken) return;
+
+            if (this.videoGalleryLoadingText) {
                 this.videoGalleryLoadingText.destroy();
                 this.videoGalleryLoadingText = null;
+            }
+
+            if (failed || !this.cache.video.exists(key)) {
+                console.error(`Failed to load video: ${filename}`);
+                this.renderText("Couldn't load this file.");
+                return;
             }
 
             show();
@@ -713,12 +737,42 @@ export default class TakeoverFrameScene extends AdventureScene {
         const maxHeight = bottom - top;
         const centerY = top + (maxHeight / 2);
 
+        // Snapshot the token this display call belongs to — a late-firing
+        // "error" listener below (after the player has already navigated
+        // to a different video) needs to know not to tear down whatever's
+        // now on screen.
+        const displayToken = this.videoGalleryLoadToken;
+
         const video = this.add.video(centerX, centerY, key);
         video.setDepth(1);
         video.on("created", (vid) => {
             const scale = Math.min(maxWidth / vid.width, maxHeight / vid.height);
             vid.setDisplaySize(vid.width * scale, vid.height * scale);
         });
+
+        // renderVideoGalleryItem's own load-time checks can't always tell
+        // a genuinely broken video from a successfully "loaded" one —
+        // confirmed empirically that Phaser's video loader treats a
+        // response that downloads fine but isn't actually playable video
+        // (e.g. Vite dev's own SPA fallback, which 200s a missing asset
+        // request with an HTML body) as a successful load. The
+        // underlying <video> element's own native "error" event is what
+        // actually catches this, once the browser tries to decode it —
+        // this is the last line of defense: swap the broken video out for
+        // the same "Couldn't load this file." fallback text.
+        video.video.addEventListener("error", () => {
+
+            if (displayToken !== this.videoGalleryLoadToken) return;
+
+            console.error(`Video failed to play (not valid video data): ${filename}`);
+
+            this.videoGalleryObjects.forEach((obj) => obj.destroy());
+            this.videoGalleryObjects = [];
+
+            this.renderText("Couldn't load this file.");
+
+        }, { once: true });
+
         video.setLoop(true);
         video.play(false);
 
@@ -2194,12 +2248,42 @@ export default class TakeoverFrameScene extends AdventureScene {
 
         this.galleryLoadingText = this.renderText("Loading...");
 
+        // Phaser's "complete" event fires once the load QUEUE finishes,
+        // regardless of whether this specific file actually loaded — a
+        // 404/network failure used to leave nothing on screen at all (the
+        // loading text destroyed, nothing to replace it), no way to tell
+        // "still loading" from "broken". Two distinct failure shapes need
+        // covering: "loaderror" catches a genuine network-level failure
+        // (a real 404 on the deployed static host); it does NOT fire for
+        // a response that downloads fine but fails to decode as an image
+        // (confirmed empirically — e.g. the Vite dev server's own SPA
+        // fallback, which 200s a missing asset request with an HTML body)
+        // — that case only shows up as the texture never actually getting
+        // added, so both checks are needed together.
+        let failed = false;
+
+        const onLoadError = (file) => {
+            if (file.key === key) failed = true;
+        };
+
+        this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, onLoadError);
+
         this.load.image(key, `assets/${this.content.folder}/${encodeURIComponent(filename)}`);
         this.load.once("complete", () => {
 
-            if (token === this.galleryLoadToken && this.galleryLoadingText) {
+            this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onLoadError);
+
+            if (token !== this.galleryLoadToken) return;
+
+            if (this.galleryLoadingText) {
                 this.galleryLoadingText.destroy();
                 this.galleryLoadingText = null;
+            }
+
+            if (failed || !this.textures.exists(key)) {
+                console.error(`Failed to load gallery image: ${filename}`);
+                this.renderText("Couldn't load this file.");
+                return;
             }
 
             show();

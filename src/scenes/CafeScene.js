@@ -21,6 +21,19 @@ export default class CafeScene extends AdventureScene {
         super("Cafe");
     }
 
+    // See LibraryScene's own preload() comment — same deferred-loading
+    // reasoning. Café has no TakeoverFrame viewer of its own (just Talk ->
+    // BaristaCloseup and Pet), so nothing else to bundle in here.
+    preload() {
+
+        this.showLoadingText();
+
+        this.load.image("cafe-room", "assets/scenes/cafe-room.png");
+        this.load.image("cafe-barista-closeup", "assets/scenes/cafe-room-closeup.png");
+        this.load.audio("music-cafe", "assets/audio/music/cafe.mp3");
+
+    }
+
     buildScene() {
 
         this.backSceneKey = "World";

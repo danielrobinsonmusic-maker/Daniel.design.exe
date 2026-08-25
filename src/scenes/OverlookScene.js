@@ -116,7 +116,34 @@ export default class OverlookScene extends Phaser.Scene {
         super("Overlook");
     }
 
+    // See LibraryScene's own preload() comment (Overlook isn't an
+    // AdventureScene, so this inlines the same small pattern rather than
+    // using its shared showLoadingText() helper) — same deferred-loading
+    // reasoning. Both backdrop variants load regardless of the cat
+    // achievement's current state, same as before, since which one
+    // create() actually displays is re-checked fresh on every visit.
+    preload() {
+
+        const { width, height } = this.scale;
+
+        this.preloadLoadingText = this.add.text(width / 2, height / 2, "Loading...", {
+            fontFamily: "monospace",
+            fontSize: "20px",
+            color: "#aaaaaa"
+        }).setOrigin(0.5);
+
+        this.load.image("overlook-bg", "assets/scenes/overlook1.png");
+        this.load.image("overlook-bg-achieved", "assets/scenes/overlook.png");
+
+    }
+
     create() {
+
+        if (this.preloadLoadingText) {
+            this.preloadLoadingText.destroy();
+            this.preloadLoadingText = null;
+        }
+
 
         const { width, height } = this.scale;
 
